@@ -867,6 +867,7 @@ async function createPurchaseOrderFromOrder(order, supplierId, salesRepId, deliv
     const poData = {
       supplier_id: supplierId,
       sales_rep_id: salesRepId,
+      order_id: order.id,  // Link PO to the customer order
       product_id: firstItem.product,
       quantity: Math.ceil(parseFloat(firstItem.quantity) || 1),
       unit_price: parseFloat(firstItem.price) || 0,
