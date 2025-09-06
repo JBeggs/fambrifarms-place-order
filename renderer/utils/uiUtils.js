@@ -23,17 +23,24 @@ function getDomElements() {
 
 function renderMessagesList() {
   const { messagesListEl } = domElements;
-  if (!messagesListEl) return;
+  if (!messagesListEl) {
+    console.warn('[uiUtils] Messages list element not found');
+    return;
+  }
   
+  console.log('[uiUtils] Rendering messages list, count:', rawMessages.length);
   messagesListEl.innerHTML = '';
   
   if (rawMessages.length === 0) {
     messagesListEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No messages available</div>';
+    console.log('[uiUtils] No messages to display');
     return;
   }
   
   rawMessages.forEach((message, index) => {
     if (processedMessageIds.has(index)) return; // Skip processed messages
+    
+    console.log('[uiUtils] Rendering message:', index, message.timestamp, message.sender);
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message-item ${selectedMessageIds.has(index) ? 'selected' : ''}`;

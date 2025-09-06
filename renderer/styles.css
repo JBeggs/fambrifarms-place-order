@@ -152,6 +152,7 @@ html, body {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-sm);
+  min-height: 0; /* Allow flex shrinking */
 }
 
 .sidebar h3 {
@@ -184,6 +185,8 @@ html, body {
   background: var(--bg-primary);
   overflow-y: auto;
   box-shadow: var(--shadow-sm);
+  min-height: 0; /* Allow flex shrinking */
+  max-height: calc(100vh - 300px); /* Prevent overflow */
 }
 
 .message-item {
@@ -195,6 +198,7 @@ html, body {
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  min-height: 80px; /* Ensure minimum height for readability */
 }
 
 .message-item:hover {
@@ -264,6 +268,8 @@ html, body {
   overflow-y: auto;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  word-break: break-word;
+  min-height: 40px; /* Ensure minimum height */
 }
 
 /* Tab navigation */
@@ -794,6 +800,8 @@ input[type="checkbox"] {
   color: var(--text-muted);
   font-style: italic;
   font-size: 0.875rem;
+  padding: 2rem;
+  text-align: center;
 }
 
 .orders-list:empty::after {
