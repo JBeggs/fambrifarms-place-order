@@ -167,6 +167,166 @@ function requireQualityGrades() {
   return businessSettings?.require_quality_grades !== false;
 }
 
+// Generate quality grade options
+function generateQualityGradeOptions(selectedGrade = 'B') {
+  const grades = [
+    {value: 'A', label: 'Grade A - Premium'},
+    {value: 'B', label: 'Grade B - Standard'},
+    {value: 'C', label: 'Grade C - Economy'},
+    {value: 'R', label: 'Grade R - Reject/Processing'}
+  ];
+  
+  return grades.map(grade => 
+    `<option value="${grade.value}" ${selectedGrade === grade.value ? 'selected' : ''}>${grade.label}</option>`
+  ).join('');
+}
+
+// Unit conversion functions
+function findUnitByAbbreviation(abbreviation) {
+  return units.find(unit => unit.abbreviation === abbreviation);
+}
+
+function convertQuantity(quantity, fromUnit, toUnit) {
+  /**
+   * Convert quantity from one unit to another
+   * Uses base_unit_multiplier for conversion
+   */
+  if (!fromUnit || !toUnit || fromUnit.abbreviation === toUnit.abbreviation) {
+    return quantity;
+  }
+  
+  // Convert to base unit first, then to target unit
+  const baseQuantity = quantity * parseFloat(fromUnit.base_unit_multiplier);
+  const convertedQuantity = baseQuantity / parseFloat(toUnit.base_unit_multiplier);
+  
+  return Math.round(convertedQuantity * 10000) / 10000; // Round to 4 decimal places
+}
+
+function getUnitConversionInfo(supplierUnit, internalUnit) {
+  /**
+   * Get conversion information between supplier and internal units
+   */
+  const fromUnit = findUnitByAbbreviation(supplierUnit);
+  const toUnit = findUnitByAbbreviation(internalUnit);
+  
+  if (!fromUnit || !toUnit) {
+    return {
+      canConvert: false,
+      error: 'Unit not found in system'
+    };
+  }
+  
+  // Check if units are compatible (both weight or both count)
+  if (fromUnit.is_weight !== toUnit.is_weight) {
+    return {
+      canConvert: false,
+      error: 'Cannot convert between weight and count units'
+    };
+  }
+  
+  const conversionFactor = parseFloat(fromUnit.base_unit_multiplier) / parseFloat(toUnit.base_unit_multiplier);
+  
+  return {
+    canConvert: true,
+    fromUnit: fromUnit,
+    toUnit: toUnit,
+    conversionFactor: conversionFactor,
+    description: `1 ${fromUnit.abbreviation} = ${conversionFactor} ${toUnit.abbreviation}`
+  };
+}
+
+function showUnitConversionHelper(supplierUnit, internalUnit, quantity = 1) {
+  /**
+   * Show unit conversion helper in the UI
+   */
+  const conversion = getUnitConversionInfo(supplierUnit, internalUnit);
+  
+  if (!conversion.canConvert) {
+    return `<span style="color: #d32f2f;">⚠️ ${conversion.error}</span>`;
+  }
+  
+  const convertedQuantity = convertQuantity(quantity, conversion.fromUnit, conversion.toUnit);
+  
+  return `
+    <div style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;">
+      <strong>Unit Conversion:</strong><br>
+      ${quantity} ${supplierUnit} = ${convertedQuantity} ${internalUnit}<br>
+      <em>${conversion.description}</em>
+    </div>
+  `;
+}
+
+// Validation functions using business settings
+function validatePhoneNumber(phone) {
+  if (!phone) return false;
+  
+  // Remove all non-digit characters
+  const cleaned = phone.replace(/\D/g, '');
+  
+  // Check against configurable minimum digits
+  const minDigits = getMinPhoneDigits();
+  return cleaned.length >= minDigits;
+}
+
+function validateEmail(email) {
+  if (!requireEmailValidation()) {
+    return true; // Skip validation if not required
+  }
+  
+  if (!email) return false;
+  
+  // Basic email regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function validatePrice(price, historicalAverage = null) {
+  /**
+   * Validate price against business rules
+   * This is a frontend validation - backend will do the full historical analysis
+   */
+  if (!price || price <= 0) {
+    return {
+      isValid: false,
+      message: 'Price must be greater than 0'
+    };
+  }
+  
+  // Check if price is reasonable (basic sanity check)
+  if (price > 10000) {
+    return {
+      isValid: false,
+      message: 'Price seems unusually high. Please verify.',
+      requiresApproval: true
+    };
+  }
+  
+  // If we have historical data, do a basic variance check
+  if (historicalAverage && historicalAverage > 0) {
+    const variance = Math.abs((price - historicalAverage) / historicalAverage) * 100;
+    const maxVariance = businessSettings?.max_price_variance_percent || 20;
+    
+    if (variance > maxVariance * 2) { // Double threshold for extreme variance
+      return {
+        isValid: false,
+        message: `Price variance of ${variance.toFixed(1)}% is extremely high. Requires approval.`,
+        requiresApproval: true
+      };
+    } else if (variance > maxVariance) {
+      return {
+        isValid: true,
+        message: `Price variance of ${variance.toFixed(1)}% is high but acceptable.`,
+        requiresReview: true
+      };
+    }
+  }
+  
+  return {
+    isValid: true,
+    message: 'Price is within acceptable range'
+  };
+}
+
 async function loadCustomers() {
   console.log('[renderer] DEBUG - Raw backend URL:', getBackendUrl());
   console.log('[renderer] DEBUG - Processed BACKEND_API_URL:', BACKEND_API_URL);
@@ -999,6 +1159,26 @@ async function showAddStockDialog(product, requiredQuantity) {
             <option value="other">Other</option>
           </select>
         </div>
+        ${requireBatchTracking() ? `
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; margin-bottom: 4px; font-weight: 500;">Batch/Lot Number *</label>
+          <input type="text" id="batchNumber" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Enter batch or lot number">
+        </div>
+        ` : ''}
+        ${requireQualityGrades() ? `
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; margin-bottom: 4px; font-weight: 500;">Quality Grade *</label>
+          <select id="qualityGrade" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            ${generateQualityGradeOptions()}
+          </select>
+        </div>
+        ` : ''}
+        ${requireExpiryDates() ? `
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; margin-bottom: 4px; font-weight: 500;">Expiry Date</label>
+          <input type="date" id="expiryDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        ` : ''}
         <div style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Notes</label>
           <textarea id="notes" rows="2" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="Additional notes about this stock addition..."></textarea>
@@ -1051,9 +1231,51 @@ async function showAddStockDialog(product, requiredQuantity) {
       const reason = dialog.querySelector('#reason').value;
       const notes = dialog.querySelector('#notes').value.trim();
       
+      // Collect additional tracking data
+      const stockData = {
+        quantity: addQuantity,
+        reason: reason,
+        notes: notes
+      };
+      
+      // Add batch tracking if required
+      if (requireBatchTracking()) {
+        const batchNumber = dialog.querySelector('#batchNumber')?.value?.trim();
+        if (batchNumber) {
+          stockData.batch_number = batchNumber;
+        }
+      }
+      
+      // Add quality grade if required
+      if (requireQualityGrades()) {
+        const qualityGrade = dialog.querySelector('#qualityGrade')?.value;
+        if (qualityGrade) {
+          stockData.quality_grade = qualityGrade;
+        }
+      }
+      
+      // Add expiry date if required
+      if (requireExpiryDates()) {
+        const expiryDate = dialog.querySelector('#expiryDate')?.value;
+        if (expiryDate) {
+          stockData.expiry_date = expiryDate;
+        }
+      }
+      
       // Basic validation
       if (!addQuantity || addQuantity <= 0) {
         showError('Please enter a valid quantity to add');
+        return;
+      }
+      
+      // Validate required tracking fields
+      if (requireBatchTracking() && !stockData.batch_number) {
+        showError('Batch/Lot number is required');
+        return;
+      }
+      
+      if (requireQualityGrades() && !stockData.quality_grade) {
+        showError('Quality grade is required');
         return;
       }
       
