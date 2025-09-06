@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { startReader } from './reader/whatsappReader.js';
 import { processLines } from './shared/messageParser.js';
+import { initializeWhatsAppSender, sendWhatsAppMessage, closeWhatsAppSender, isWhatsAppSenderActive } from './sender/whatsappSender.js';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -181,6 +182,47 @@ app.whenReady().then(async () => {
       event.returnValue = '';
     }
   });
+
+  // WhatsApp sender IPC handlers
+  ipcMain.handle('whatsapp-sender-init', async () => {
+    try {
+      const sessionPath = process.env.WHATSAPP_SESSION_PATH;
+      const headless = process.env.HEADLESS === '1';
+      
+      if (!sessionPath) {
+        throw new Error('WHATSAPP_SESSION_PATH not configured');
+      }
+      
+      await initializeWhatsAppSender(sessionPath, headless);
+      console.log('[main] WhatsApp sender initialized successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[main] Failed to initialize WhatsApp sender:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('whatsapp-send-message', async (event, { phoneNumber, message }) => {
+    try {
+      if (!isWhatsAppSenderActive()) {
+        // Try to initialize if not active
+        const sessionPath = process.env.WHATSAPP_SESSION_PATH;
+        const headless = process.env.HEADLESS === '1';
+        await initializeWhatsAppSender(sessionPath, headless);
+      }
+      
+      await sendWhatsAppMessage(phoneNumber, message);
+      console.log('[main] WhatsApp message sent successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[main] Failed to send WhatsApp message:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('whatsapp-sender-status', async () => {
+    return { active: isWhatsAppSenderActive() };
+  });
   if (payload) {
     setTimeout(() => {
       console.log('[main] sending payload from env', { size: JSON.stringify(payload).length });
@@ -289,5 +331,13 @@ app.on('will-quit', () => {
 app.on('window-all-closed', async () => { 
   console.log('[main] window-all-closed'); 
   await stopReader(); 
+  
+  // Clean up WhatsApp sender
+  try {
+    await closeWhatsAppSender();
+  } catch (error) {
+    console.error('[main] Error closing WhatsApp sender:', error);
+  }
+  
   if (process.platform !== 'darwin') app.quit(); 
 });

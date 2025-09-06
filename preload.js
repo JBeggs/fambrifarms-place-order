@@ -96,5 +96,9 @@ contextBridge.exposeInMainWorld('api', {
   getImagePath: (filename) => {
     // Send sync request to main process to get the image path
     return ipcRenderer.sendSync('get-image-path', filename);
-  }
+  },
+  // WhatsApp sender methods
+  whatsappSenderInit: () => ipcRenderer.invoke('whatsapp-sender-init'),
+  whatsappSendMessage: (data) => ipcRenderer.invoke('whatsapp-send-message', data),
+  whatsappSenderStatus: () => ipcRenderer.invoke('whatsapp-sender-status')
 });
