@@ -76,6 +76,20 @@ function toggleMessageSelection(messageId) {
     selectedMessageIds.delete(messageId);
   } else {
     selectedMessageIds.add(messageId);
+    
+    // Try to auto-select customer based on message content
+    const message = rawMessages[messageId];
+    if (message && (message.text || message.sender)) {
+      // Import and call auto-selection function
+      import('./dataLoaders.js').then(({ autoSelectCustomer }) => {
+        const wasSelected = autoSelectCustomer(message.text, message.sender);
+        if (wasSelected) {
+          console.log(`[renderer] Auto-selected customer based on message: "${(message.text || '').substring(0, 50)}..." from sender: "${message.sender || 'Unknown'}"`);
+        }
+      }).catch(err => {
+        console.warn('[renderer] Failed to auto-select customer:', err);
+      });
+    }
   }
   
   renderMessagesList();

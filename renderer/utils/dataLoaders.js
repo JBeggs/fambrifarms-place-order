@@ -331,6 +331,107 @@ async function createNewCustomer(customerData) {
   }
 }
 
+// Customer matching function
+function findCustomerByName(messageText, messageSender = '') {
+  if ((!messageText && !messageSender) || customers.length === 0) {
+    return null;
+  }
+  
+  const text = (messageText || '').toLowerCase();
+  const sender = (messageSender || '').toLowerCase();
+  
+  // Try to find customer by business name in message text
+  for (const customer of customers) {
+    if (customer.restaurant_profile && customer.restaurant_profile.business_name) {
+      const businessName = customer.restaurant_profile.business_name.toLowerCase();
+      
+      // Exact match in text or sender
+      if (text.includes(businessName) || sender.includes(businessName)) {
+        console.log(`[renderer] Found customer match: "${customer.restaurant_profile.business_name}" in message`);
+        return customer;
+      }
+      
+      // Try partial matches for common variations
+      const businessWords = businessName.split(' ');
+      if (businessWords.length > 1) {
+        // Check if all words of business name appear in text or sender
+        const allWordsMatchText = businessWords.every(word => 
+          word.length > 2 && text.includes(word)
+        );
+        const allWordsMatchSender = businessWords.every(word => 
+          word.length > 2 && sender.includes(word)
+        );
+        if (allWordsMatchText || allWordsMatchSender) {
+          console.log(`[renderer] Found partial customer match: "${customer.restaurant_profile.business_name}" in message`);
+          return customer;
+        }
+      }
+      
+      // Check for common abbreviations/variations
+      const variations = getBusinessNameVariations(businessName);
+      for (const variation of variations) {
+        if (text.includes(variation) || sender.includes(variation)) {
+          console.log(`[renderer] Found customer variation match: "${customer.restaurant_profile.business_name}" (${variation}) in message`);
+          return customer;
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+function getBusinessNameVariations(businessName) {
+  const variations = [];
+  const name = businessName.toLowerCase();
+  
+  // Common restaurant name variations
+  const commonVariations = {
+    'mugg and bean': ['mugg & bean', 'mugg bean', 'mugg'],
+    'debonair pizza': ['debonair', 'debonairs'],
+    'casa bella': ['casabella'],
+    'order valley': ['ordervalley'],
+    'barchef entertainment': ['barchef', 'bar chef'],
+    'pecanwood golf estate': ['pecanwood', 'pecanwood golf'],
+    'culinary institute': ['culinary', 'culinary inst']
+  };
+  
+  if (commonVariations[name]) {
+    variations.push(...commonVariations[name]);
+  }
+  
+  // Add generic variations
+  if (name.includes(' and ')) {
+    variations.push(name.replace(' and ', ' & '));
+  }
+  if (name.includes(' & ')) {
+    variations.push(name.replace(' & ', ' and '));
+  }
+  
+  return variations;
+}
+
+function autoSelectCustomer(messageText, messageSender = '') {
+  const matchedCustomer = findCustomerByName(messageText, messageSender);
+  if (matchedCustomer) {
+    const customerSelect = document.getElementById('customerSelect');
+    if (customerSelect) {
+      // Only auto-select if no customer is currently selected
+      if (!customerSelect.value || customerSelect.value === '') {
+        customerSelect.value = matchedCustomer.id;
+        console.log(`[renderer] Auto-selected customer: ${matchedCustomer.restaurant_profile.business_name}`);
+        
+        // Trigger change event to update UI
+        customerSelect.dispatchEvent(new Event('change'));
+        return true;
+      } else {
+        console.log(`[renderer] Customer already selected, skipping auto-selection for: ${matchedCustomer.restaurant_profile.business_name}`);
+      }
+    }
+  }
+  return false;
+}
+
 // Load all data function
 async function loadAllData() {
   console.log('[renderer] Loading all data...');
@@ -419,5 +520,7 @@ export {
   getCustomers,
   getDepartments,
   getSuppliers,
-  getSalesReps
+  getSalesReps,
+  findCustomerByName,
+  autoSelectCustomer
 };
