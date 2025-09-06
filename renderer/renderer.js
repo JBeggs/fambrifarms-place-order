@@ -2774,25 +2774,47 @@ function addNewOrderItem() {
 
 // Old loadForm and saveForm functions removed - replaced by manual selection interface
 
-// Manual selection event listeners
-btnSelectAll.addEventListener('click', () => {
-  selectedMessageIds.clear();
-  rawMessages.forEach((_, index) => {
-    if (!processedMessageIds.has(index)) {
-      selectedMessageIds.add(index);
-    }
-  });
-  renderMessagesList();
-  renderSelectedMessages();
-  renderOrderPreview();
-});
+// Manual selection event listeners - moved to initializeApp()
+function setupEventListeners() {
+  if (btnSelectAll) {
+    btnSelectAll.addEventListener('click', () => {
+      selectedMessageIds.clear();
+      rawMessages.forEach((_, index) => {
+        if (!processedMessageIds.has(index)) {
+          selectedMessageIds.add(index);
+        }
+      });
+      renderMessagesList();
+      renderSelectedMessages();
+      renderOrderPreview();
+    });
+  }
 
-btnClearSelection.addEventListener('click', () => {
-  selectedMessageIds.clear();
-  renderMessagesList();
-  renderSelectedMessages();
-  renderOrderPreview();
-});
+  if (btnClearSelection) {
+    btnClearSelection.addEventListener('click', () => {
+      selectedMessageIds.clear();
+      renderMessagesList();
+      renderSelectedMessages();
+      renderOrderPreview();
+    });
+  }
+
+  if (btnCreateOrder) {
+    btnCreateOrder.addEventListener('click', handleCreateOrder);
+  }
+
+  if (btnSkipMessages) {
+    btnSkipMessages.addEventListener('click', handleSkipMessages);
+  }
+
+  if (btnClose) {
+    btnClose.addEventListener('click', handleClose);
+  }
+
+  if (customerSelectEl) {
+    customerSelectEl.addEventListener('change', handleCustomerSelect);
+  }
+}
 
 async function submitOrder(orderData) {
   if (!ENDPOINT) { 
@@ -2823,7 +2845,8 @@ async function submitOrder(orderData) {
   return true;
 }
 
-btnCreateOrder.addEventListener('click', async () => {
+// Moved to setupEventListeners function
+async function handleCreateOrder() {
   if (selectedMessageIds.size === 0) {
     alert('Please select messages first');
     return;
@@ -2886,9 +2909,9 @@ btnCreateOrder.addEventListener('click', async () => {
     renderOrderPreview();
     alert('Order created successfully');
   }
-});
+}
 
-btnSkipMessages.addEventListener('click', () => {
+function handleSkipMessages() {
   if (selectedMessageIds.size === 0) {
     alert('Please select messages first');
     return;
@@ -2900,25 +2923,25 @@ btnSkipMessages.addEventListener('click', () => {
   renderMessagesList();
   renderSelectedMessages();
   renderOrderPreview();
-});
-btnClose.addEventListener('click', () => window.close());
+}
 
-// Customer selection event handler
-const customerSelect = document.getElementById('customerSelect');
-if (customerSelect) {
-  customerSelect.addEventListener('change', async (e) => {
-    if (e.target.value === 'ADD_NEW') {
-      // Show new customer dialog
-      const newCustomer = await showNewCustomerDialog();
+function handleClose() {
+  window.close();
+}
+
+function handleCustomerSelect(e) {
+  if (e.target.value === 'ADD_NEW') {
+    // Show new customer dialog
+    showNewCustomerDialog().then(newCustomer => {
       if (newCustomer) {
         // Select the newly created customer
-        customerSelect.value = newCustomer.id;
-  } else {
+        customerSelectEl.value = newCustomer.id;
+      } else {
         // Reset to empty if cancelled
-        customerSelect.value = '';
+        customerSelectEl.value = '';
       }
-    }
-  });
+    });
+  }
 }
 
 function boot() {
@@ -3288,6 +3311,9 @@ function initializeApp() {
   if (tabDebug) {
     tabDebug.addEventListener('click', () => showPanel('debug'));
   }
+  
+  // Set up main app event listeners
+  setupEventListeners();
 
   // Initialize the app state
   try {
