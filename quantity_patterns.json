@@ -1,0 +1,158 @@
+{
+  "weight_units": [
+    "kg",
+    "g",
+    "grams"
+  ],
+  "count_units": [
+    "pun",
+    "pkt",
+    "pkts",
+    "packet",
+    "packets"
+  ],
+  "container_units": [
+    "box",
+    "boxes",
+    "bag",
+    "bags",
+    "punnet",
+    "punnets"
+  ],
+  "group_units": [
+    "bunch",
+    "bunches",
+    "head",
+    "heads"
+  ],
+  "multiplication_patterns": [
+    "x",
+    "×",
+    "X",
+    "*"
+  ],
+  "specific_items": [
+    "tomato",
+    "tomatoes",
+    "cucumber",
+    "cucumbers",
+    "cherry",
+    "onion",
+    "onions",
+    "lemon",
+    "lemons",
+    "apple",
+    "apples",
+    "orange",
+    "oranges",
+    "banana",
+    "bananas",
+    "grape",
+    "grapes",
+    "strawberry",
+    "strawberries",
+    "pineapple",
+    "pineapples",
+    "avocado",
+    "avocados",
+    "avo",
+    "avos",
+    "potato",
+    "potatoes",
+    "carrot",
+    "carrots",
+    "pepper",
+    "peppers",
+    "cabbage",
+    "cabbages",
+    "lettuce",
+    "spinach",
+    "rocket",
+    "parsley",
+    "mint",
+    "basil",
+    "thyme",
+    "rosemary",
+    "coriander",
+    "chives",
+    "dill",
+    "ginger",
+    "garlic",
+    "mushroom",
+    "mushrooms",
+    "broccoli",
+    "cauliflower",
+    "beetroot",
+    "celery",
+    "corn",
+    "marrow",
+    "butternut",
+    "naatjies",
+    "mellon",
+    "watermelon",
+    "pawpaw",
+    "iceberg",
+    "chilli",
+    "chillies",
+    "tumeric",
+    "turmeric",
+    "greens",
+    "micro",
+    "veg",
+    "eggs",
+    "semi",
+    "brown",
+    "porta",
+    "wild",
+    "mixed",
+    "crispy",
+    "cocktail",
+    "baby",
+    "sweet",
+    "red",
+    "green",
+    "yellow",
+    "white",
+    "blue",
+    "soft"
+  ],
+  "special_patterns": [
+    "\\d+kg\\w+",
+    "\\w+x\\d+",
+    "\\d+x\\w+",
+    "\\d+\\*\\s*\\w+",
+    "\\d+\\s*\\*\\s*\\w+"
+  ],
+  "skip_patterns": [
+    "stock\\s+as\\s+at",
+    "orders\\s+start\\s+here"
+  ],
+  "command_patterns": {
+    "add_to_order": "please\\s+add\\s+(.+?)\\s+to\\s+(.+?)(?:\\s+boxes?)?$",
+    "image_placeholder": "<image:([^>]+)>",
+    "whatsapp_message": "^\\[(?<ts>[^\\]]+)\\]\\s*(?<company>[^→·]*?)\\s*(?:·\\s*(?<phone>[^→]+))?\\s*→\\s*(?<text>.*)$",
+    "normalization": "[^a-z0-9]"
+  },
+  "quantity_corrections": [
+    {
+      "pattern": "(\\d+)([×x])(\\d+)(kg|g)([A-Za-z])",
+      "replacement": "$1$2$3$4 $5",
+      "description": "Fix spacing in complex patterns like '2×5kgTomato' → '2×5kg Tomato'"
+    },
+    {
+      "pattern": "(\\d+)(kg|g)([A-Za-z])",
+      "replacement": "$1$2 $3",
+      "description": "Fix spacing in weight patterns like '10kgOnions' → '10kg Onions'"
+    },
+    {
+      "pattern": "(\\d+)([×x])([A-Za-z])",
+      "replacement": "$1$2 $3",
+      "description": "Fix spacing in multiplication patterns like '3xBroccoli' → '3x Broccoli'"
+    },
+    {
+      "pattern": "(\\d+)(box|boxes|bag|bags|pun|pkt|pkts|bunch|bunches|head|heads)([A-Za-z])",
+      "replacement": "$1$2 $3",
+      "description": "Fix spacing in container patterns like '5boxTomatoes' → '5box Tomatoes'"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>Place Order</title>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; }
+    .wrap { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr auto; height: 100%; }
+    .sidebar { border-right: 1px solid #ddd; padding: 8px; overflow: auto; }
+    .content { padding: 12px; display: grid; grid-template-rows: auto auto auto 1fr; row-gap: 10px; }
+    .footer { grid-column: 1 / span 2; border-top: 1px solid #ddd; padding: 8px; display: flex; justify-content: flex-end; gap: 8px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+    li.active { background: #f0f0f0; }
+    input[type=text] { width: 100%; padding: 6px; }
+    label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; }
+    .row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 8px; }
+    .items-list { border: 1px solid #ccc; border-radius: 6px; min-height: 42px; }
+    .item-row { display: grid; grid-template-columns: 80px 1fr auto auto; gap: 8px; padding: 8px; border-bottom: 1px solid #eee; align-items: start; }
+    .item-row:last-child { border-bottom: none; }
+    .item-row.removed { background: #ffe9e9; opacity: 0.7; }
+    .quantity-input { width: 60px; padding: 4px; text-align: center; border: 1px solid #ccc; border-radius: 4px; margin-top: 4px; }
+    .item-name { flex: 1; }
+    .item-unit { color: #666; font-size: 12px; margin-top: 4px; }
+    .item-actions { display: flex; gap: 4px; margin-top: 4px; }
+    .btn-small { padding: 2px 6px; font-size: 11px; border: 1px solid #ccc; background: white; border-radius: 3px; cursor: pointer; }
+    .btn-small:hover { background: #f5f5f5; }
+    .btn-remove { color: #d73a49; }
+    .btn-restore { color: #28a745; }
+    .image-item { background: #f8f9ff; border-left: 3px solid #4285f4; padding: 12px 8px; }
+    .image-item .quantity-input { background: #f0f0f0; }
+    .image-item .item-name { font-style: normal; color: #333; }
+    .add-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .note { font-size: 12px; color: #777; }
+    .topbar { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="sidebar">
+      <h3>Orders</h3>
+      <ul id="orders"></ul>
+      <div style="margin-top:12px;">
+        <button id="tabOrders">Orders</button>
+        <button id="tabDebug">Debug</button>
+      </div>
+    </div>
+    <div class="content" id="panelOrders">
+      <div class="topbar">
+        <div class="row"><label>Company</label><input id="company" type="text" /></div>
+        <div><label><input id="verified" type="checkbox" /> Verified</label></div>
+      </div>
+      <div class="row"><label>Phone</label><input id="phone" type="text" /></div>
+      <div>
+        <label>Items</label>
+        <div id="itemsList" class="items-list"></div>
+        <div class="add-row" style="margin-top:8px;">
+          <input id="addItem" type="text" placeholder="Add item…" />
+          <button id="addBtn">Add</button>
+        </div>
+        <div class="note" id="hint"></div>
+      </div>
+    </div>
+    <div class="content" id="panelDebug" style="display:none; grid-template-rows: auto 1fr;">
+      <div>
+        <h3>Payload Debug</h3>
+        <div class="note">Pre-send payloads (from main) and post-receive (renderer) will appear below.</div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <h4>Pre-send</h4>
+          <pre id="debugPre" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px; border-radius:6px; height: 100%; overflow:auto;"></pre>
+        </div>
+        <div>
+          <h4>Post-receive</h4>
+          <pre id="debugPost" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px; border-radius:6px; height: 100%; overflow:auto;"></pre>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <button id="remove">Remove</button>
+      <button id="submit">Submit Current</button>
+      <button id="submitAll">Submit All</button>
+      <button id="close">Close</button>
+    </div>
+  </div>
+  <script type="module" src="renderer.js?v=3"></script>
+</body>
+</html>

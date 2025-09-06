@@ -1,0 +1,59 @@
+{
+  "quantity_patterns": [
+    {
+      "name": "item_x_quantity_unit",
+      "pattern": "^(.+?)\\s*[×x]\\s*(\\d+(?:[.,]\\d+)?)\\s*(.*)$",
+      "flags": "i",
+      "description": "Sweet corn x6 pkts"
+    },
+    {
+      "name": "item_quantity_x_unit", 
+      "pattern": "^(.+?)\\s*(\\d+(?:[.,]\\d+)?)\\s*[×x]\\s*(.*)$",
+      "flags": "i",
+      "description": "Sweet corn 6x pkts"
+    },
+    {
+      "name": "quantity_x_item",
+      "pattern": "^(\\d+(?:[.,]\\d+)?)\\s*[×x]\\s*(.+)$",
+      "flags": "i", 
+      "description": "6x Sweet corn pkts"
+    },
+    {
+      "name": "quantity_item",
+      "pattern": "^(\\d+(?:[.,]\\d+)?)\\s*(.+)$",
+      "flags": "i",
+      "description": "6 Sweet corn pkts"
+    },
+    {
+      "name": "item_quantity_unit",
+      "pattern": "^(.+?)\\s*(\\d+(?:[.,]\\d+)?)\\s*(kg|g|pkt|pkts|box|boxes|bag|bags|bunch|bunches|head|heads)s?\\b(.*)$",
+      "flags": "i",
+      "description": "Butter nut 10kg"
+    }
+  ],
+  "unit_extraction_pattern": {
+    "pattern": "^(.+?)\\s+(kg|g|pkt|pkts|box|boxes|bag|bags|bunch|bunches|head|heads)s?$",
+    "flags": "i"
+  },
+  "image_pattern": {
+    "pattern": "^\\[IMAGE:\\s*(.+?)\\]$",
+    "flags": ""
+  },
+  "company_name_pattern": {
+    "pattern": "^[A-Za-z][A-Za-z .&'\\-]{0,35}$",
+    "flags": ""
+  },
+  "add_to_pattern": {
+    "pattern": "^(?:please\\s+)?add(?:\\s+on)?\\s+to\\s+(.+)$",
+    "flags": "i"
+  },
+  "message_line_pattern": {
+    "pattern": "^\\[(?<ts>[^\\]]+)\\]\\s*(?<company>[^→·]*?)\\s*(?:·\\s*(?<phone>[^→]+))?\\s*→\\s*(?<text>.*)$",
+    "flags": ""
+  },
+  "text_normalization": {
+    "whitespace_pattern": "\\s+",
+    "allowed_chars_pattern": "[^a-z0-9 &'\\-]",
+    "flags": "g"
+  }
+}

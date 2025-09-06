@@ -1,0 +1,65 @@
+{
+  "Mugg and Bean": [
+    "Mugg Been",
+    "Mugg & Bean",
+    "/mugg.*bean/i",
+    "Mugg and bean"
+  ],
+  "Wimpy": [
+    "Wimpy mooikloof",
+    "/^wimpy/i",
+    "Wimpy mooinooi"
+  ],
+  "Debonairs": [
+    "Debonair",
+    "/debonair(s)?/i"
+  ],
+  "Culinary": [
+    "/^culinary$/i"
+  ],
+  "Casa Bella": [
+    "/^casa\\s*bella$/i",
+    "CasaBella"
+  ],
+  "Pecanwood": [
+    "Pecan wood",
+    "/^pecan\\s*wood$/i"
+  ],
+  "T-junction": [
+    "T junction",
+    "/^t[-\\s]?junction$/i"
+  ],
+  "Marco": [
+    "/^marco$/i",
+    "/\\bmarco\\b/i",
+    "Marco boxes"
+  ],
+  "Venue": [
+    "/^venue$/i"
+  ],
+  "SHALLOME": [
+    "Shallome",
+    "/^shallome$/i"
+  ],
+  "Shebeen": [
+    "/^shebeen$/i"
+  ],
+  "Luma": [
+    "/^luma$/i"
+  ],
+  "Hazvinei": [
+    "/^hazvinei$/i"
+  ],
+  "auto_corrections": {
+    "mugg been": "Mugg and Bean",
+    "mugg bean": "Mugg and Bean", 
+    "casa bella": "Casa Bella",
+    "casa": "Casa Bella",
+    "t junction": "T-junction",
+    "tjunction": "T-junction",
+    "wimpy mooinooi": "Wimpy",
+    "wimpy mooikloof": "Wimpy"
+  }
+}
+
+

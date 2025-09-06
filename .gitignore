@@ -1,0 +1,46 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Electron build output
+dist/
+build/
+
+# WhatsApp session data (contains sensitive data)
+whatsapp-session/
+
+# Debug files that shouldn't be in repo
+ai_sucks.md
+todayifuckedup.md
+
+# Images directory (may contain sensitive order images)
+images/
+
+# Test files
+test-*.js
+*test*.json
+
+# Temporary files
+*.tmp
+*.temp

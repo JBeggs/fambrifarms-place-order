@@ -1,0 +1,55 @@
+{
+  "content_starters": [
+    "good morning",
+    "good day", 
+    "morning",
+    "veg order",
+    "here's my order"
+  ],
+  "non_order_meta_phrases": [
+    "stock as at",
+    "orders start here"
+  ],
+  "weight_units": [
+    "kg", 
+    "g", 
+    "grams", 
+    "gram"
+  ],
+  "package_units": [
+    "pkt", 
+    "pkts", 
+    "packet", 
+    "packets", 
+    "box", 
+    "boxes", 
+    "bag", 
+    "bags", 
+    "bunch", 
+    "bunches", 
+    "head", 
+    "heads"
+  ],
+  "label_stopwords": [
+    "good",
+    "morning",
+    "day",
+    "orders",
+    "order",
+    "please",
+    "add",
+    "thanks",
+    "thank",
+    "hi",
+    "hello",
+    "tnx",
+    "veg",
+    "stock",
+    "start",
+    "here",
+    "venue"
+  ],
+  "max_company_name_words": 6,
+  "time_gap_minutes": 15,
+  "forwarder_timeout_minutes": 5
+}
