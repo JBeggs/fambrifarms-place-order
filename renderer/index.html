@@ -2,11 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* https://localhost:*" />
   <title>Place Order</title>
   <style>
     html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; }
-    .wrap { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 1fr auto; height: 100%; }
+    .wrap { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: 1fr auto; height: 100%; }
     .sidebar { border-right: 1px solid #ddd; padding: 8px; overflow: auto; }
     .content { padding: 12px; display: grid; grid-template-rows: auto auto auto 1fr; row-gap: 10px; }
     .footer { grid-column: 1 / span 2; border-top: 1px solid #ddd; padding: 8px; display: flex; justify-content: flex-end; gap: 8px; }
@@ -34,32 +34,71 @@
     .add-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
     .note { font-size: 12px; color: #777; }
     .topbar { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+    
+    /* Message selection styles */
+    .messages-list { border: 1px solid #ddd; border-radius: 8px; height: 80vh; overflow-y: auto; background: white; }
+    .message-item { display: flex; align-items: start; gap: 12px; padding: 16px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: all 0.2s ease; }
+    .message-item:hover { background: #f8f9fa; }
+    .message-item.selected { background: #e3f2fd; border-left: 4px solid #2196f3; }
+    .message-item:last-child { border-bottom: none; }
+    .message-checkbox { margin-top: 3px; transform: scale(1.1); }
+    .message-content { flex: 1; font-size: 13px; line-height: 1.4; }
+    .message-timestamp { color: #666; font-weight: 600; font-size: 11px; margin-bottom: 2px; }
+    .message-sender { color: #888; font-size: 11px; margin-bottom: 4px; font-weight: 500; }
+    .message-text { color: #333; white-space: pre-wrap; overflow-wrap: break-word; max-height: 120px; overflow-y: auto; font-size: 12px; line-height: 1.4; border: 1px solid #eee; padding: 6px; border-radius: 4px; background: #fafafa; }
+    
+    /* Selected messages and order preview */
+    .selected-messages-list { border: 1px solid #ddd; border-radius: 8px; min-height: 100px; max-height: 200px; overflow-y: auto; padding: 12px; background: #fafafa; }
+    .order-preview { border: 1px solid #ddd; border-radius: 8px; min-height: 150px; max-height: 250px; overflow-y: auto; padding: 12px; background: white; }
+    .selected-message { font-size: 12px; color: #555; margin-bottom: 8px; padding: 8px; background: white; border-radius: 6px; border-left: 3px solid #2196f3; }
+    .preview-item { font-size: 13px; padding: 8px; border-bottom: 1px solid #f0f0f0; color: #333; display: flex; justify-content: space-between; align-items: center; }
+    .preview-item:last-child { border-bottom: none; }
+    .preview-item-content { flex: 1; }
+    .preview-item-actions { display: flex; gap: 4px; }
+    .btn-edit, .btn-remove { padding: 2px 6px; font-size: 11px; border: none; border-radius: 3px; cursor: pointer; }
+    .btn-edit { background: #e3f2fd; color: #1976d2; }
+    .btn-edit:hover { background: #bbdefb; }
+    .btn-remove { background: #ffebee; color: #d32f2f; }
+    .btn-remove:hover { background: #ffcdd2; }
+    .item-edit-form { display: none; background: #f5f5f5; padding: 8px; border-radius: 4px; margin-top: 4px; }
+    .item-edit-form input { margin-right: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; width: 60px; }
+    .item-edit-form .btn-save, .item-edit-form .btn-cancel { padding: 4px 8px; font-size: 11px; margin-right: 4px; }
+    
+    /* Control buttons styling */
+    .btn-small { padding: 6px 12px; font-size: 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+    .btn-small:hover { background: #f5f5f5; border-color: #bbb; }
+    
+    /* Customer select styling */
+    #customerSelect { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="sidebar">
-      <h3>Orders</h3>
-      <ul id="orders"></ul>
+      <h3>WhatsApp Messages</h3>
+      <div id="messageControls" style="margin-bottom: 8px;">
+        <button id="selectAll" class="btn-small">Select All</button>
+        <button id="clearSelection" class="btn-small">Clear</button>
+      </div>
+      <div id="messagesList" class="messages-list"></div>
       <div style="margin-top:12px;">
-        <button id="tabOrders">Orders</button>
+        <button id="tabMessages">Messages</button>
         <button id="tabDebug">Debug</button>
       </div>
     </div>
-    <div class="content" id="panelOrders">
+    <div class="content" id="panelMessages">
       <div class="topbar">
-        <div class="row"><label>Company</label><input id="company" type="text" /></div>
+        <div class="row"><label>Customer</label><select id="customerSelect"><option value="">Select Customer...</option></select></div>
         <div><label><input id="verified" type="checkbox" /> Verified</label></div>
       </div>
-      <div class="row"><label>Phone</label><input id="phone" type="text" /></div>
       <div>
-        <label>Items</label>
-        <div id="itemsList" class="items-list"></div>
-        <div class="add-row" style="margin-top:8px;">
-          <input id="addItem" type="text" placeholder="Add item…" />
-          <button id="addBtn">Add</button>
-        </div>
-        <div class="note" id="hint"></div>
+        <label>Selected Messages</label>
+        <div id="selectedMessagesList" class="selected-messages-list"></div>
+      </div>
+      <div>
+        <label>Order Items (Preview)</label>
+        <div id="orderPreview" class="order-preview"></div>
+        <div class="note" id="hint">Select messages and customer to create order</div>
       </div>
     </div>
     <div class="content" id="panelDebug" style="display:none; grid-template-rows: auto 1fr;">
@@ -79,9 +118,8 @@
       </div>
     </div>
     <div class="footer">
-      <button id="remove">Remove</button>
-      <button id="submit">Submit Current</button>
-      <button id="submitAll">Submit All</button>
+      <button id="skipMessages">Skip Selected</button>
+      <button id="createOrder">Create Order</button>
       <button id="close">Close</button>
     </div>
   </div>
