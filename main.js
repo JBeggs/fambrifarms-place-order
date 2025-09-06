@@ -77,7 +77,10 @@ function createWindow() {
   mainWindow.on('responsive', () => {
     console.log('[main] window responsive');
   });
-  const currentDir = path.dirname(new URL(import.meta.url).pathname);
+  // Cross-platform path handling
+  const currentDir = process.platform === 'win32' 
+    ? path.dirname(fileURLToPath(import.meta.url))
+    : path.dirname(new URL(import.meta.url).pathname);
   mainWindow.loadFile(path.join(currentDir, 'renderer', 'index.html'));
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -89,7 +92,10 @@ app.whenReady().then(async () => {
   // Register protocol to serve images
   protocol.registerFileProtocol('local-images', (request, callback) => {
     const url = request.url.replace('local-images://', '');
-    const currentDir = path.dirname(new URL(import.meta.url).pathname);
+    // Cross-platform path handling
+    const currentDir = process.platform === 'win32' 
+      ? path.dirname(fileURLToPath(import.meta.url))
+      : path.dirname(new URL(import.meta.url).pathname);
     const imagesDir = path.join(currentDir, 'images');
     let imagePath = path.join(imagesDir, url);
     
