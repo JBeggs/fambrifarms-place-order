@@ -385,7 +385,7 @@ export async function startReader(env, onBatch) {
       let company = sender;
       if (!company) {
         console.warn('[reader] Message has no sender, skipping');
-        continue;
+        return null;
       } 
       let phone = '';
       
@@ -408,7 +408,7 @@ export async function startReader(env, onBatch) {
       
       const phonePart = phone ? ` · ${phone}` : '';
       return `[${m.ts}] ${company}${phonePart} → ${m.text}`;
-    });
+    }).filter(line => line !== null);
   }
 
   async function packageAndEmit(initial = false) {

@@ -246,11 +246,6 @@ function getUnitConversionInfo(supplierUnit, internalUnit) {
     console.warn('[renderer] To unit not found for conversion info');
     return null;
   }
-    return {
-      canConvert: false,
-      error: 'Unit not found in system'
-    };
-  }
   
   // Check if units are compatible (both weight or both count)
   if (fromUnit.is_weight !== toUnit.is_weight) {
@@ -1950,7 +1945,7 @@ function parseItemQuantity(itemText) {
   if (typeof itemText !== 'string') {
     if (itemText === null) {
       console.warn('[renderer] Item text is null, skipping');
-      continue;
+      return null;
     }
     if (itemText === undefined) {
       console.error('[renderer] parseItemQuantity received null/undefined input');
