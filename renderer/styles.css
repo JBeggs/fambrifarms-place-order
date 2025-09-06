@@ -56,6 +56,18 @@ html, body {
   grid-template-rows: 1fr auto;
   height: 100vh;
   background: var(--bg-secondary);
+  transition: grid-template-columns 0.3s ease;
+}
+
+/* Layout adjustments for different panels */
+.wrap.orders-view,
+.wrap.debug-view {
+  grid-template-columns: 1fr;
+}
+
+.wrap.orders-view .sidebar,
+.wrap.debug-view .sidebar {
+  display: none;
 }
 
 /* Sidebar styling */
@@ -390,6 +402,31 @@ input[type="checkbox"] {
 /* Orders panel */
 #panelOrders {
   grid-template-rows: auto auto 1fr;
+}
+
+/* Full-width layout for orders and debug views */
+.wrap.orders-view .content,
+.wrap.debug-view .content {
+  max-width: none;
+  padding: 2rem;
+}
+
+.wrap.orders-view #panelOrders .topbar h3,
+.wrap.debug-view #panelDebug h3 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Enhanced orders layout when full width */
+.wrap.orders-view #panelOrders > div:nth-child(2) {
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.wrap.orders-view #panelOrders > div:nth-child(2) > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
 }
 
 /* Filter section */
@@ -858,6 +895,15 @@ li.active {
 }
 
 #tabMessages.active, #tabOrders.active, #tabDebug.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* Active tab states based on view */
+.wrap.messages-view #tabMessages,
+.wrap.orders-view #tabOrders,
+.wrap.debug-view #tabDebug {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);

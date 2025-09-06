@@ -550,22 +550,39 @@ function showPanel(which) {
     return;
   }
   
+  // Get the wrap element to control layout
+  const wrapElement = document.querySelector('.wrap');
+  
   // Hide all panels
   panelMessages.style.display = 'none';
   panelOrders.style.display = 'none';
   panelDebug.style.display = 'none';
   
-  // Show selected panel
+  // Remove all view classes
+  if (wrapElement) {
+    wrapElement.classList.remove('orders-view', 'debug-view', 'messages-view');
+  }
+  
+  // Show selected panel and set appropriate layout
   if (which === 'orders') {
     panelOrders.style.display = '';
+    if (wrapElement) {
+      wrapElement.classList.add('orders-view');
+    }
     // Load orders when Orders tab is first opened
     import('./orderUtils.js').then(({ loadOrders }) => {
       loadOrders().catch(err => console.error('[uiUtils] Failed to load orders:', err));
     });
   } else if (which === 'debug') {
     panelDebug.style.display = '';
+    if (wrapElement) {
+      wrapElement.classList.add('debug-view');
+    }
   } else {
     panelMessages.style.display = '';
+    if (wrapElement) {
+      wrapElement.classList.add('messages-view');
+    }
   }
 }
 
