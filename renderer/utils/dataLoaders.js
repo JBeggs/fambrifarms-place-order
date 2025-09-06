@@ -27,7 +27,10 @@ async function loadCustomers() {
     console.log('[renderer] Raw customers API response:', data);
     
     // Handle different response formats
-    if (data.results && Array.isArray(data.results)) {
+    if (data.customers && Array.isArray(data.customers)) {
+      // Custom response format from CustomerViewSet
+      customers = data.customers;
+    } else if (data.results && Array.isArray(data.results)) {
       // Paginated response from DRF ViewSet
       customers = data.results;
     } else if (Array.isArray(data)) {
@@ -265,9 +268,14 @@ function populateCustomerDropdown() {
     const option = document.createElement('option');
     option.value = customer.id;
     
-    // Display name priority: first_name + last_name, then email, then id
+    // Display name priority: business_name, then first_name + last_name, then email, then id
     let displayName = '';
-    if (customer.first_name) {
+    if (customer.restaurant_profile && customer.restaurant_profile.business_name) {
+      displayName = customer.restaurant_profile.business_name;
+      if (customer.restaurant_profile.branch_name) {
+        displayName += ` - ${customer.restaurant_profile.branch_name}`;
+      }
+    } else if (customer.first_name) {
       displayName = customer.first_name;
       if (customer.last_name) {
         displayName += ` ${customer.last_name}`;
