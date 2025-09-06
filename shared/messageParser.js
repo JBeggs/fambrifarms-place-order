@@ -276,9 +276,11 @@ export function processLines(lines) {
             if (hasQuantity) {
               order.items_text.push(part);
             } else {
-              // Skip company names in instructions
+              // Skip company names, sender names, and phone numbers in instructions
               const partCompany = toCanonical(part);
-              if (!partCompany) {
+              const isSenderName = part === currentMsg.sender;
+              const isPhoneNumber = /^[\+\d\s\-\(\)]+$/.test(part.trim()) && part.trim().length > 5;
+              if (!partCompany && !isSenderName && !isPhoneNumber) {
                 order.instructions.push(part);
               }
             }
@@ -326,7 +328,13 @@ export function processLines(lines) {
               if (hasQuantity) {
                 order.items_text.push(part);
               } else {
-                order.instructions.push(part);
+                // Skip company names, sender names, and phone numbers in instructions
+                const partCompany = toCanonical(part);
+                const isSenderName = part === prevMsg.sender;
+                const isPhoneNumber = /^[\+\d\s\-\(\)]+$/.test(part.trim()) && part.trim().length > 5;
+                if (!partCompany && !isSenderName && !isPhoneNumber) {
+                  order.instructions.push(part);
+                }
               }
             }
             
@@ -435,7 +443,13 @@ export function processLines(lines) {
         if (hasQuantity) {
           order.items_text.push(part);
         } else {
-          order.instructions.push(part);
+          // Skip company names, sender names, and phone numbers in instructions
+          const partCompany = toCanonical(part);
+          const isSenderName = part === msg.sender;
+          const isPhoneNumber = /^[\+\d\s\-\(\)]+$/.test(part.trim()) && part.trim().length > 5;
+          if (!partCompany && !isSenderName && !isPhoneNumber) {
+            order.instructions.push(part);
+          }
         }
       }
       

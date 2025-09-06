@@ -60,9 +60,7 @@
     .btn-edit:hover { background: #bbdefb; }
     .btn-remove { background: #ffebee; color: #d32f2f; }
     .btn-remove:hover { background: #ffcdd2; }
-    .item-edit-form { display: none; background: #f5f5f5; padding: 8px; border-radius: 4px; margin-top: 4px; }
-    .item-edit-form input { margin-right: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; width: 60px; }
-    .item-edit-form .btn-save, .item-edit-form .btn-cancel { padding: 4px 8px; font-size: 11px; margin-right: 4px; }
+    .item-edit-form { display: none; background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 8px; border: 1px solid #e0e0e0; }
     
     /* Control buttons styling */
     .btn-small { padding: 6px 12px; font-size: 12px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
@@ -70,6 +68,35 @@
     
     /* Customer select styling */
     #customerSelect { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    
+    /* Orders list styling */
+    .orders-list { border: 1px solid #ddd; border-radius: 8px; height: 60vh; overflow-y: auto; background: white; }
+    .order-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 16px; border-bottom: 1px solid #f0f0f0; transition: all 0.2s ease; }
+    .order-item:hover { background: #f8f9fa; }
+    .order-item:last-child { border-bottom: none; }
+    .order-content { flex: 1; }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .order-number { font-weight: 600; color: #333; font-size: 14px; }
+    .order-status { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; }
+    .order-status.received { background: #e3f2fd; color: #1976d2; }
+    .order-status.parsed { background: #f3e5f5; color: #7b1fa2; }
+    .order-status.confirmed { background: #e8f5e8; color: #388e3c; }
+    .order-status.po_sent { background: #fff3e0; color: #f57c00; }
+    .order-status.po_confirmed { background: #e0f2f1; color: #00796b; }
+    .order-status.delivered { background: #e8f5e8; color: #2e7d32; }
+    .order-status.cancelled { background: #ffebee; color: #d32f2f; }
+    .order-details { color: #666; font-size: 12px; line-height: 1.4; }
+    .order-customer { font-weight: 500; color: #333; margin-bottom: 4px; }
+    .order-date { color: #888; }
+    .order-items-count { color: #666; font-style: italic; }
+    .order-actions { display: flex; flex-direction: column; gap: 4px; }
+    .order-actions .btn-small { padding: 4px 8px; font-size: 11px; min-width: 60px; text-align: center; }
+    .btn-view { background: #e3f2fd; color: #1976d2; border-color: #bbdefb; }
+    .btn-view:hover { background: #bbdefb; }
+    .btn-edit { background: #fff3e0; color: #f57c00; border-color: #ffcc02; }
+    .btn-edit:hover { background: #ffcc02; }
+    .btn-delete { background: #ffebee; color: #d32f2f; border-color: #ffcdd2; }
+    .btn-delete:hover { background: #ffcdd2; }
   </style>
 </head>
 <body>
@@ -83,6 +110,7 @@
       <div id="messagesList" class="messages-list"></div>
       <div style="margin-top:12px;">
         <button id="tabMessages">Messages</button>
+        <button id="tabOrders">Orders</button>
         <button id="tabDebug">Debug</button>
       </div>
     </div>
@@ -99,6 +127,35 @@
         <label>Order Items (Preview)</label>
         <div id="orderPreview" class="order-preview"></div>
         <div class="note" id="hint">Select messages and customer to create order</div>
+      </div>
+    </div>
+    <div class="content" id="panelOrders" style="display:none; grid-template-rows: auto auto 1fr;">
+      <div class="topbar">
+        <h3>Order Management</h3>
+        <div>
+          <button id="refreshOrders" class="btn-small">Refresh</button>
+        </div>
+      </div>
+      <div>
+        <label>Filter Orders</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <select id="statusFilter">
+            <option value="">All Status</option>
+            <option value="received">Received</option>
+            <option value="parsed">AI Parsed</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="po_sent">PO Sent</option>
+            <option value="po_confirmed">PO Confirmed</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <input type="date" id="dateFilter" placeholder="Filter by date">
+          <input type="text" id="customerFilter" placeholder="Filter by customer">
+        </div>
+      </div>
+      <div>
+        <label>Orders List</label>
+        <div id="ordersList" class="orders-list"></div>
       </div>
     </div>
     <div class="content" id="panelDebug" style="display:none; grid-template-rows: auto 1fr;">
@@ -123,6 +180,6 @@
       <button id="close">Close</button>
     </div>
   </div>
-  <script type="module" src="renderer.js?v=3"></script>
+  <script type="module" src="renderer.js?v=4"></script>
 </body>
 </html>
