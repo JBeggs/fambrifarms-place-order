@@ -440,6 +440,7 @@ export async function startReader(env, onBatch) {
   }, monitorInterval);
 
   return { 
+    driver: driver,  // Expose the driver for sharing with sender
     stop: async () => { 
       try { 
         clearInterval(timer); 

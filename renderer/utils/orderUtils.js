@@ -804,47 +804,24 @@ Fambri Farms Purchase Order`;
   // Get sales rep phone number if available
   const phoneNumber = poDetails.sales_rep?.phone ? poDetails.sales_rep.phone.replace(/[^\d]/g, '') : '';
   
-  try {
-    // Try automated WhatsApp sending first
-    console.log('[orderUtils] Attempting automated WhatsApp send...');
+  console.log('[orderUtils] Sending WhatsApp message via automation...');
+  
+  if (window.api && window.api.whatsappSendMessage) {
+    const result = await window.api.whatsappSendMessage({
+      phoneNumber: phoneNumber,
+      message: message
+    });
     
-    if (window.api && window.api.whatsappSendMessage) {
-      const result = await window.api.whatsappSendMessage({
-        phoneNumber: phoneNumber,
-        message: message
-      });
-      
-      if (result.success) {
-        alert('✅ Purchase Order sent via WhatsApp successfully!');
-        console.log('[orderUtils] WhatsApp message sent automatically');
-        return;
-      } else {
-        console.warn('[orderUtils] Automated WhatsApp send failed:', result.error);
-        // Fall through to manual method
-      }
+    if (result.success) {
+      alert('✅ Purchase Order sent via WhatsApp successfully!');
+      console.log('[orderUtils] WhatsApp message sent automatically');
+    } else {
+      alert(`❌ Failed to send WhatsApp message: ${result.error}`);
+      console.error('[orderUtils] WhatsApp send failed:', result.error);
     }
-    
-    // Fallback: Open WhatsApp Web manually
-    console.log('[orderUtils] Using manual WhatsApp Web fallback');
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = phoneNumber 
-      ? `https://wa.me/${phoneNumber}?text=${encodedMessage}`
-      : `https://wa.me/?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
-    alert('📱 WhatsApp Web opened - please send the message manually');
-    
-  } catch (error) {
-    console.error('[orderUtils] Error sending WhatsApp message:', error);
-    
-    // Final fallback: Open WhatsApp Web
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = phoneNumber 
-      ? `https://wa.me/${phoneNumber}?text=${encodedMessage}`
-      : `https://wa.me/?text=${encodedMessage}`;
-    
-    window.open(whatsappUrl, '_blank');
-    alert('⚠️ Automated sending failed. WhatsApp Web opened - please send manually.');
+  } else {
+    alert('❌ WhatsApp automation not available');
+    console.error('[orderUtils] WhatsApp API not available');
   }
 }
 

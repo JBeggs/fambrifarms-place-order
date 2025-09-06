@@ -1,49 +1,25 @@
-import { Builder, By, until, Key } from 'selenium-webdriver';
-import chrome from 'selenium-webdriver/chrome.js';
+import { By, until, Key } from 'selenium-webdriver';
 
-let senderDriver = null;
+// We'll receive the driver from the reader instead of creating our own
+let readerDriver = null;
 
-export async function initializeWhatsAppSender(sessionPath, headless = false) {
-  if (senderDriver) {
-    console.log('[sender] WhatsApp sender already initialized');
-    return senderDriver;
+export function setReaderDriver(driver) {
+  readerDriver = driver;
+  console.log('[sender] Using shared WhatsApp reader driver for sending');
+}
+
+export async function initializeWhatsAppSender() {
+  if (!readerDriver) {
+    throw new Error('Reader driver not available. WhatsApp reader must be running first.');
   }
-
-  const options = new chrome.Options();
-  options.addArguments(`--user-data-dir=${sessionPath}`);
-  if (headless) {
-    options.addArguments('--headless=new', '--disable-gpu', '--window-size=1920,1080', '--disable-dev-shm-usage');
-  }
-
-  try {
-    senderDriver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
-    console.log('[sender] WhatsApp sender driver initialized');
-    
-    // Navigate to WhatsApp Web
-    await senderDriver.get('https://web.whatsapp.com');
-    
-    // Wait for WhatsApp to load (either QR code or chat interface)
-    await senderDriver.wait(until.elementLocated(By.css('[data-testid="chat-list"]')), 30000);
-    console.log('[sender] WhatsApp Web loaded successfully');
-    
-    return senderDriver;
-  } catch (error) {
-    console.error('[sender] Failed to initialize WhatsApp sender:', error);
-    if (senderDriver) {
-      try {
-        await senderDriver.quit();
-      } catch (quitError) {
-        console.error('[sender] Error quitting driver after initialization failure:', quitError);
-      }
-      senderDriver = null;
-    }
-    throw error;
-  }
+  
+  console.log('[sender] WhatsApp sender using existing reader session');
+  return readerDriver;
 }
 
 export async function sendWhatsAppMessage(phoneNumber, message) {
-  if (!senderDriver) {
-    throw new Error('WhatsApp sender not initialized. Call initializeWhatsAppSender first.');
+  if (!readerDriver) {
+    throw new Error('WhatsApp reader driver not available. Reader must be running first.');
   }
 
   try {
@@ -55,7 +31,7 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
     }
     
     // Find the message input box
-    const messageBox = await senderDriver.wait(
+    const messageBox = await readerDriver.wait(
       until.elementLocated(By.css('[data-testid="conversation-compose-box-input"]')),
       10000
     );
@@ -88,7 +64,7 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
 async function searchAndSelectContact(phoneNumber) {
   try {
     // Click on the search box
-    const searchBox = await senderDriver.wait(
+    const searchBox = await readerDriver.wait(
       until.elementLocated(By.css('[data-testid="chat-list-search"]')),
       10000
     );
@@ -97,11 +73,11 @@ async function searchAndSelectContact(phoneNumber) {
     await searchBox.sendKeys(phoneNumber);
     
     // Wait a moment for search results
-    await senderDriver.sleep(2000);
+    await readerDriver.sleep(2000);
     
     // Try to find and click the contact
     try {
-      const contactElement = await senderDriver.wait(
+      const contactElement = await readerDriver.wait(
         until.elementLocated(By.css('[data-testid="cell-frame-container"]')),
         5000
       );
@@ -120,18 +96,11 @@ async function searchAndSelectContact(phoneNumber) {
 }
 
 export async function closeWhatsAppSender() {
-  if (senderDriver) {
-    try {
-      await senderDriver.quit();
-      console.log('[sender] WhatsApp sender closed');
-    } catch (error) {
-      console.error('[sender] Error closing WhatsApp sender:', error);
-    } finally {
-      senderDriver = null;
-    }
-  }
+  // We don't close the driver since it's shared with the reader
+  console.log('[sender] WhatsApp sender cleanup (shared driver remains active)');
+  readerDriver = null;
 }
 
 export function isWhatsAppSenderActive() {
-  return senderDriver !== null;
+  return readerDriver !== null;
 }

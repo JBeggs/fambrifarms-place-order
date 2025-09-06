@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { startReader } from './reader/whatsappReader.js';
 import { processLines } from './shared/messageParser.js';
-import { initializeWhatsAppSender, sendWhatsAppMessage, closeWhatsAppSender, isWhatsAppSenderActive } from './sender/whatsappSender.js';
+import { setReaderDriver, sendWhatsAppMessage, closeWhatsAppSender, isWhatsAppSenderActive } from './sender/whatsappSender.js';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -186,15 +186,11 @@ app.whenReady().then(async () => {
   // WhatsApp sender IPC handlers
   ipcMain.handle('whatsapp-sender-init', async () => {
     try {
-      const sessionPath = process.env.WHATSAPP_SESSION_PATH;
-      const headless = process.env.HEADLESS === '1';
-      
-      if (!sessionPath) {
-        throw new Error('WHATSAPP_SESSION_PATH not configured');
+      if (!isWhatsAppSenderActive()) {
+        return { success: false, error: 'WhatsApp reader must be running first' };
       }
       
-      await initializeWhatsAppSender(sessionPath, headless);
-      console.log('[main] WhatsApp sender initialized successfully');
+      console.log('[main] WhatsApp sender using shared reader session');
       return { success: true };
     } catch (error) {
       console.error('[main] Failed to initialize WhatsApp sender:', error);
@@ -205,10 +201,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('whatsapp-send-message', async (event, { phoneNumber, message }) => {
     try {
       if (!isWhatsAppSenderActive()) {
-        // Try to initialize if not active
-        const sessionPath = process.env.WHATSAPP_SESSION_PATH;
-        const headless = process.env.HEADLESS === '1';
-        await initializeWhatsAppSender(sessionPath, headless);
+        return { success: false, error: 'WhatsApp reader not active. Please ensure WhatsApp reader is running.' };
       }
       
       await sendWhatsAppMessage(phoneNumber, message);
@@ -294,6 +287,13 @@ app.whenReady().then(async () => {
       
       showWindowOnce();
     });
+    
+    // Share the reader driver with the WhatsApp sender
+    if (reader && reader.driver) {
+      setReaderDriver(reader.driver);
+      console.log('[main] WhatsApp sender configured to use reader driver');
+    }
+    
   } catch (e) {
     console.error('[main] reader_start_failed', e);
     setTimeout(() => {
