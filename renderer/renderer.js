@@ -3320,13 +3320,14 @@ function initializeApp() {
 
   // Initialize the app state
   try {
-    // Load cached data if available
-    loadCachedData('customers');
-    loadCachedData('products');
-    loadCachedData('departments');
-    loadCachedData('units');
-    loadCachedData('suppliers');
-    loadCachedData('businessSettings');
+    // Load data asynchronously (don't await to avoid blocking UI)
+    loadCustomers().catch(err => console.error('[renderer] Failed to load customers:', err));
+    loadProducts().catch(err => console.error('[renderer] Failed to load products:', err));
+    loadDepartments().catch(err => console.error('[renderer] Failed to load departments:', err));
+    loadUnits().catch(err => console.error('[renderer] Failed to load units:', err));
+    loadSuppliers().catch(err => console.error('[renderer] Failed to load suppliers:', err));
+    loadSalesReps().catch(err => console.error('[renderer] Failed to load sales reps:', err));
+    loadBusinessSettings().catch(err => console.error('[renderer] Failed to load business settings:', err));
     
     // Set default panel
     showPanel('messages');
