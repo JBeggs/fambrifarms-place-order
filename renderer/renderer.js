@@ -1,22 +1,7 @@
-// New manual selection UI elements
-const messagesListEl = document.getElementById('messagesList');
-const selectedMessagesListEl = document.getElementById('selectedMessagesList');
-const orderPreviewEl = document.getElementById('orderPreview');
-const customerSelectEl = document.getElementById('customerSelect');
-const verifiedEl = document.getElementById('verified');
-const hintEl = document.getElementById('hint');
-const panelMessages = document.getElementById('panelMessages');
-const panelDebug = document.getElementById('panelDebug');
-const tabMessages = document.getElementById('tabMessages');
-const tabDebug = document.getElementById('tabDebug');
-const debugPreEl = document.getElementById('debugPre');
-const debugPostEl = document.getElementById('debugPost');
-
-const btnSelectAll = document.getElementById('selectAll');
-const btnClearSelection = document.getElementById('clearSelection');
-const btnCreateOrder = document.getElementById('createOrder');
-const btnSkipMessages = document.getElementById('skipMessages');
-const btnClose = document.getElementById('close');
+// Global variables - will be initialized when DOM is ready
+let messagesListEl, selectedMessagesListEl, orderPreviewEl, customerSelectEl, verifiedEl, hintEl;
+let panelMessages, panelDebug, tabMessages, tabDebug, debugPreEl, debugPostEl;
+let btnSelectAll, btnClearSelection, btnCreateOrder, btnSkipMessages, btnClose;
 
 function getBackendUrl() {
   if (!window.api) {
@@ -3274,9 +3259,71 @@ function showPanel(which) {
     panelDebug.style.display = 'none';
   }
 }
-if (tabMessages) {
-  tabMessages.addEventListener('click', () => showPanel('messages'));
+// Initialize DOM elements and event listeners
+function initializeApp() {
+  // Initialize DOM elements
+  messagesListEl = document.getElementById('messagesList');
+  selectedMessagesListEl = document.getElementById('selectedMessagesList');
+  orderPreviewEl = document.getElementById('orderPreview');
+  customerSelectEl = document.getElementById('customerSelect');
+  verifiedEl = document.getElementById('verified');
+  hintEl = document.getElementById('hint');
+  panelMessages = document.getElementById('panelMessages');
+  panelDebug = document.getElementById('panelDebug');
+  tabMessages = document.getElementById('tabMessages');
+  tabDebug = document.getElementById('tabDebug');
+  debugPreEl = document.getElementById('debugPre');
+  debugPostEl = document.getElementById('debugPost');
+
+  btnSelectAll = document.getElementById('selectAll');
+  btnClearSelection = document.getElementById('clearSelection');
+  btnCreateOrder = document.getElementById('createOrder');
+  btnSkipMessages = document.getElementById('skipMessages');
+  btnClose = document.getElementById('close');
+
+  // Set up event listeners
+  if (tabMessages) {
+    tabMessages.addEventListener('click', () => showPanel('messages'));
+  }
+  if (tabDebug) {
+    tabDebug.addEventListener('click', () => showPanel('debug'));
+  }
+
+  // Initialize the app state
+  try {
+    // Load cached data if available
+    loadCachedData('customers');
+    loadCachedData('products');
+    loadCachedData('departments');
+    loadCachedData('units');
+    loadCachedData('suppliers');
+    loadCachedData('businessSettings');
+    
+    // Set default panel
+    showPanel('messages');
+    
+    console.log('[renderer] App initialized successfully');
+  } catch (error) {
+    console.error('[renderer] Error during app initialization:', error);
+  }
 }
-if (tabDebug) {
-  tabDebug.addEventListener('click', () => showPanel('debug'));
+
+// Wait for DOM to be ready before initializing
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  // DOM is already ready
+  initializeApp();
 }
+
+// Handle page refresh gracefully
+window.addEventListener('beforeunload', (event) => {
+  console.log('[renderer] Page is about to refresh/unload');
+  // Don't prevent refresh, just log it
+});
+
+// Re-initialize if the page was refreshed
+window.addEventListener('load', () => {
+  console.log('[renderer] Page loaded/refreshed');
+  // The initializeApp() will already have been called by DOMContentLoaded or immediately above
+});
