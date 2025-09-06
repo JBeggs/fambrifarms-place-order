@@ -53,11 +53,10 @@ html, body {
 .wrap {
   display: grid;
   grid-template-columns: 380px 1fr;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   grid-template-areas: 
     "nav nav"
-    "sidebar content"
-    "footer footer";
+    "sidebar content";
   height: 100vh;
   background: var(--bg-secondary);
   transition: grid-template-columns 0.3s ease;
@@ -69,8 +68,7 @@ html, body {
   grid-template-columns: 1fr;
   grid-template-areas: 
     "nav"
-    "content"
-    "footer";
+    "content";
 }
 
 .wrap.orders-view .sidebar,
@@ -300,7 +298,7 @@ html, body {
   background: var(--bg-primary);
   padding: 1.5rem;
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto auto 1fr auto;
   gap: 1.5rem;
   overflow: hidden;
 }
@@ -649,44 +647,51 @@ input[type="checkbox"] {
   justify-content: center;
 }
 
-/* Footer */
-.footer {
-  grid-area: footer;
-  background: var(--bg-primary);
-  border-top: 1px solid var(--border-color);
-  padding: 1rem 1.5rem;
+/* Messages Actions */
+.messages-actions {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  box-shadow: 0 -1px 3px 0 rgb(0 0 0 / 0.1);
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 1rem;
 }
 
-.footer .btn-small {
+.messages-actions .btn-small,
+.messages-actions button {
   padding: 0.75rem 1.5rem;
   font-weight: 600;
+  font-size: 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-#createOrder {
+.messages-actions #createOrder {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
 }
 
-#createOrder:hover {
+.messages-actions #createOrder:hover {
   background: var(--primary-dark);
   border-color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-#skipMessages {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border-color: var(--border-color);
-}
-
-#close {
+.messages-actions #close {
   background: var(--bg-primary);
   color: var(--text-secondary);
   border-color: var(--border-color);
+}
+
+.messages-actions #close:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Debug panel */

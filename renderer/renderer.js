@@ -26,7 +26,7 @@ import { setDomElements as setOrderDomElements, loadOrders, submitOrder, createO
 // Global variables - will be initialized when DOM is ready
 let messagesListEl, selectedMessagesListEl, orderPreviewEl, customerSelectEl, verifiedEl, hintEl;
 let panelMessages, panelOrders, panelDebug, tabMessages, tabOrders, tabDebug, debugPreEl, debugPostEl;
-let btnSelectAll, btnClearSelection, btnCreateOrder, btnSkipMessages, btnClose;
+let btnSelectAll, btnClearSelection, btnCreateOrder, btnClose;
 let ordersListEl, statusFilterEl, dateFilterEl, customerFilterEl, btnRefreshOrders;
 
 // Message state - managed by uiUtils.js
@@ -69,7 +69,6 @@ function initializeApp() {
   btnSelectAll = document.getElementById('selectAll');
   btnClearSelection = document.getElementById('clearSelection');
   btnCreateOrder = document.getElementById('createOrder');
-  btnSkipMessages = document.getElementById('skipMessages');
   btnClose = document.getElementById('close');
   
   // Check if critical elements exist
@@ -146,9 +145,6 @@ function setupEventListeners() {
   }
   if (btnClearSelection) {
     btnClearSelection.addEventListener('click', handleClearSelection);
-  }
-  if (btnSkipMessages) {
-    btnSkipMessages.addEventListener('click', handleSkipMessages);
   }
   if (btnClose) {
     btnClose.addEventListener('click', handleClose);

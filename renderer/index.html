@@ -52,6 +52,12 @@
         <div id="orderPreview" class="order-preview"></div>
         <div class="note" id="hint">Select messages and customer to create order</div>
       </div>
+      
+      <!-- Messages Panel Actions -->
+      <div class="messages-actions">
+        <button id="createOrder">Create Order</button>
+        <button id="close">Close</button>
+      </div>
     </div>
     <div class="content" id="panelOrders" style="display:none; grid-template-rows: auto auto 1fr;">
       <div class="topbar">
@@ -97,11 +103,6 @@
           <pre id="debugPost" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px; border-radius:6px; height: 100%; overflow:auto;"></pre>
         </div>
       </div>
-    </div>
-    <div class="footer">
-      <button id="skipMessages">Skip Selected</button>
-      <button id="createOrder">Create Order</button>
-      <button id="close">Close</button>
     </div>
   </div>
   <script type="module" src="renderer.js?v=4"></script>
