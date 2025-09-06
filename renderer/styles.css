@@ -151,6 +151,7 @@ html, body {
   flex-direction: column;
   box-shadow: var(--shadow-sm);
   min-height: 0; /* Allow flex shrinking */
+  height: 100%; /* Take full grid area height */
   width: 100%;
   max-width: 380px; /* Constrain sidebar width */
   box-sizing: border-box;
@@ -188,7 +189,7 @@ html, body {
   overflow-x: hidden; /* Prevent horizontal scrolling */
   box-shadow: var(--shadow-sm);
   min-height: 0; /* Allow flex shrinking */
-  max-height: calc(100vh - 300px); /* Prevent overflow */
+  height: 100%; /* Take full available height */
   width: 100%; /* Ensure full width */
 }
 
@@ -283,14 +284,7 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Tab navigation */
-.sidebar > div:last-child {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-light);
-  display: flex;
-  gap: 0.5rem;
-}
+/* Tab navigation removed - now in top nav */
 
 /* Content area */
 .content {
