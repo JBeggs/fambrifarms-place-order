@@ -198,8 +198,8 @@ export async function startReader(env, onBatch) {
       }
     }
 
-    // Search fallback
-    console.log('[reader] using search fallback');
+    // Search alternative method
+    console.log('[reader] Using search alternative method');
     try {
       const search = await driver.findElement(By.css('[data-testid="chat-list-search"]'));
       await search.clear();
@@ -208,7 +208,7 @@ export async function startReader(env, onBatch) {
       const ok = await clickChatByTitle(targetGroupName);
       if (ok) return;
     } catch (error) {
-      console.warn('[reader] Search fallback failed:', error.message);
+      console.warn('[reader] Search alternative failed:', error.message);
     }
 
     // Final attempt: refresh titles and try partial matches again
@@ -354,16 +354,28 @@ export async function startReader(env, onBatch) {
         if (sm) sender = (sm[1] || '').trim();
       }
       
-      let company = sender || 'Unknown'; 
+      let company = sender;
+      if (!company) {
+        console.warn('[reader] Message has no sender, skipping');
+        continue;
+      } 
       let phone = '';
       
       if (sender && sender.startsWith('+')) { 
         phone = sender; 
         const idx = groupMembers.numbers.indexOf(sender); 
-        if (idx >= 0 && idx < groupMembers.names.length) company = groupMembers.names[idx] || company; 
+        if (idx >= 0 && idx < groupMembers.names.length) {
+          const memberName = groupMembers.names[idx];
+          if (memberName) {
+            company = memberName;
+          }
+        } 
       } else if (sender && sender !== 'Image') { 
         const idx = groupMembers.names.indexOf(sender); 
-        if (idx >= 0 && idx < groupMembers.numbers.length) phone = groupMembers.numbers[idx] || ''; 
+        if (idx >= 0 && idx < groupMembers.numbers.length) {
+          const memberPhone = groupMembers.numbers[idx];
+          phone = memberPhone ? memberPhone : '';
+        } 
       }
       
       const phonePart = phone ? ` · ${phone}` : '';
@@ -374,7 +386,7 @@ export async function startReader(env, onBatch) {
   async function packageAndEmit(initial = false) {
     const items = await collectVisible();
     if (items.length === 0) return;
-    let unread = items.filter(m => m.tsMs > (lastProcessedMs || 0));
+    let unread = items.filter(m => m.tsMs > (lastProcessedMs ? lastProcessedMs : 0));
     if (initial) unread = items; // send all on first load
     if (unread.length === 0) return;
     const gm = await getGroupMembers();

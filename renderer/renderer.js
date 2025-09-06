@@ -1169,7 +1169,7 @@ async function showInventoryDialog(product, requiredQuantity) {
       
       const inventoryData = {
         product_id: product.id,
-        initial_stock: parseFloat(dialog.querySelector('#initialStock').value) || 0,
+        initial_stock: parseFloat(dialog.querySelector('#initialStock').value) || 0, // User input fallback acceptable
         minimum_level: parseFloat(dialog.querySelector('#minLevel').value) || parseFloat(getDefaultMinimumLevel()),
         reorder_level: parseFloat(dialog.querySelector('#reorderLevel').value) || parseFloat(getDefaultReorderLevel()),
         notes: dialog.querySelector('#notes').value.trim()
@@ -2315,7 +2315,7 @@ function renderOrderPreview() {
     editForm.className = 'item-edit-form';
     editForm.innerHTML = `
       <input type="number" step="0.1" value="${item.quantity}" placeholder="Qty" class="edit-quantity">
-      <input type="text" value="${item.unit || ''}" placeholder="Unit" class="edit-unit">
+      <input type="text" value="${item.unit ? item.unit : ''}" placeholder="Unit" class="edit-unit">
       <input type="text" value="${item.name}" placeholder="Product" class="edit-name">
       <button class="btn-save">Save</button>
       <button class="btn-cancel">Cancel</button>
@@ -2422,7 +2422,7 @@ function parseAndStandardizeItem(line) {
         case 0: // "Please add spring onion 1kg" (please add product quantity unit)
           name = match[1];
           quantity = parseFloat(match[2]);
-          unit = match[3] || '';
+          unit = match[3] ? match[3] : '';
           break;
           
         case 1: // "20kg potato" (quantity + weight unit + product)
@@ -2458,7 +2458,7 @@ function parseAndStandardizeItem(line) {
         case 6: // "Parsley ×200g" (product × quantity + unit)
           name = match[1];
           quantity = parseFloat(match[2]);
-          unit = match[3] || '';
+          unit = match[3] ? match[3] : '';
           break;
           
         case 7: // "Cucumber 26" (product + number)
@@ -2476,7 +2476,7 @@ function parseAndStandardizeItem(line) {
       
       // Standardize the parsed data
       const standardized = {
-        quantity: Math.max(quantity || 1, 0.1), // Ensure positive quantity
+        quantity: Math.max(quantity ? quantity : 1, 0.1), // Ensure positive quantity
         unit: standardizeUnit(unit),
         name: standardizeProductName(name),
         originalText: originalLine
@@ -2543,7 +2543,7 @@ function standardizeUnit(unit) {
   };
   
   const cleaned = unit.toLowerCase().trim();
-  return unitMap[cleaned] || cleaned;
+  return unitMap[cleaned] ? unitMap[cleaned] : cleaned;
 }
 
 function standardizeProductName(name) {
@@ -2581,7 +2581,7 @@ function standardizeProductName(name) {
     'Baby Corn': 'Baby Corn'
   };
   
-  return nameMap[cleaned] || cleaned;
+  return nameMap[cleaned] ? nameMap[cleaned] : cleaned;
 }
 
 function isNonItemLine(line) {
@@ -2613,7 +2613,7 @@ function isNonItemLine(line) {
 
 
 function formatOrderItem(item) {
-  const qty = item.quantity || 1;
+  const qty = item.quantity ? item.quantity : 1;
   const unit = item.unit ? ` ${item.unit}` : '';
   return `${qty}${unit} ${item.name}`;
 }
@@ -2644,7 +2644,7 @@ function saveOrderItemEdit(index) {
   // Update the item
   currentOrderItems[index] = {
     ...currentOrderItems[index],
-    quantity: parseFloat(quantityInput.value) || 1,
+    quantity: parseFloat(quantityInput.value) || 1, // User input fallback acceptable
     unit: unitInput.value.trim(),
     name: nameInput.value.trim()
   };

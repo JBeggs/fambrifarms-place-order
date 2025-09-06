@@ -111,10 +111,10 @@ app.whenReady().then(async () => {
           // Sort by filename (which includes timestamp) and get the most recent
           orderImages.sort().reverse();
           imagePath = path.join(imagesDir, orderImages[0]);
-          console.log('[main] using fallback image:', imagePath);
+          console.log('[main] Using default application icon:', imagePath);
         }
       } catch (error) {
-        console.error('[main] Failed to find fallback image:', error.message);
+        console.error('[main] Failed to find default application icon:', error.message);
       }
     }
     
@@ -128,7 +128,10 @@ app.whenReady().then(async () => {
   ipcMain.on('read-aliases-sync', (event) => {
     try {
       const baseDir = __dirname;
-      const fromEnv = process.env.COMPANY_ALIASES_FILE || process.env.ALIAS_FILE || '';
+      const fromEnv = process.env.COMPANY_ALIASES_FILE || process.env.ALIAS_FILE;
+      if (!fromEnv) {
+        throw new Error('COMPANY_ALIASES_FILE or ALIAS_FILE environment variable required');
+      }
       const filePath = fromEnv
         ? (path.isAbsolute(fromEnv) ? fromEnv : path.join(baseDir, fromEnv))
         : path.join(baseDir, 'company_aliases.json');
@@ -251,12 +254,13 @@ app.whenReady().then(async () => {
     console.error('[main] reader_start_failed', e);
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('payload', { error: 'reader_start_failed', message: String(e?.message || e) });
+        const errorMessage = e?.message ? e.message : String(e);
+        mainWindow.webContents.send('payload', { error: 'reader_start_failed', message: errorMessage });
       }
     }, 300);
   }
 
-  // Safety fallback: show the window even if no payload yet after 10s
+  // Safety timeout: show the window even if no payload yet after 10s
   setTimeout(() => { showWindowOnce(); }, 10000);
 
   app.on('activate', () => { 

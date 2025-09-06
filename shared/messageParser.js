@@ -157,7 +157,10 @@ function toCanonical(companyName) {
             try {
               const lastSlash = variant.lastIndexOf('/');
               const pattern = variant.slice(1, lastSlash);
-              const flags = variant.slice(lastSlash + 1) || 'i';
+              const flags = variant.slice(lastSlash + 1);
+              if (!flags) {
+                throw new Error(`Invalid regex pattern: ${variant} - missing flags after last slash`);
+              }
               const regex = new RegExp(pattern, flags);
               if (regex.test(workingName)) return canonical;
             } catch (e) {
@@ -176,7 +179,10 @@ function toCanonical(companyName) {
 }
 
 function matchCompanyInText(text) {
-  const words = String(text || '').split(/\s+/);
+  if (!text) {
+    throw new Error('Text is required for word extraction');
+  }
+  const words = String(text).split(/\s+/);
   for (const word of words) {
     const canonical = toCanonical(word);
     if (canonical) return canonical;
@@ -220,7 +226,7 @@ export function processLines(lines) {
       continue;
     }
 
-    messages.push({ timestamp: ts || '', text: textStr });
+    messages.push({ timestamp: ts ? ts : '', text: textStr });
   }
 
   // FIRST PASS: Handle items-before-company-name patterns ONLY
