@@ -47,6 +47,8 @@ const DEPARTMENTS_ENDPOINT = BACKEND_API_URL ? `${BACKEND_API_URL.replace(/\/$/,
 const PROCUREMENT_ENDPOINT = BACKEND_API_URL ? `${BACKEND_API_URL.replace(/\/$/, '')}/api/procurement/purchase-orders/create/` : '';
 const SUPPLIERS_ENDPOINT = BACKEND_API_URL ? `${BACKEND_API_URL.replace(/\/$/, '')}/api/suppliers/suppliers/` : '';
 const SALES_REPS_ENDPOINT = BACKEND_API_URL ? `${BACKEND_API_URL.replace(/\/$/, '')}/api/suppliers/sales-reps/` : '';
+const UNITS_ENDPOINT = BACKEND_API_URL ? `${BACKEND_API_URL.replace(/\/$/, '')}/api/inventory/units/` : '';
+const BUSINESS_SETTINGS_ENDPOINT = BACKEND_API_URL ? `${BACKEND_API_URL.replace(/\/$/, '')}/api/products/business-settings/` : '';
 
 // API Error handling utilities
 function handleApiError(error, operation = 'API operation') {
@@ -108,6 +110,63 @@ function showApiError(message) {
   console.error('[renderer] API Error:', message);
 }
 
+function generateUnitOptions(selectedUnit = '') {
+  if (!units || units.length === 0) {
+    console.warn('[renderer] No units loaded, using fallback options');
+    return `
+      <option value="kg" ${selectedUnit === 'kg' ? 'selected' : ''}>kg</option>
+      <option value="g" ${selectedUnit === 'g' ? 'selected' : ''}>g</option>
+      <option value="bunch" ${selectedUnit === 'bunch' ? 'selected' : ''}>bunch</option>
+      <option value="piece" ${selectedUnit === 'piece' ? 'selected' : ''}>piece</option>
+    `;
+  }
+  
+  return units.map(unit => 
+    `<option value="${unit.abbreviation}" ${selectedUnit === unit.abbreviation ? 'selected' : ''}>${unit.abbreviation} - ${unit.name}</option>`
+  ).join('');
+}
+
+// Helper functions to get configurable defaults
+function getDefaultMinimumLevel() {
+  return businessSettings?.default_minimum_level || '5.00';
+}
+
+function getDefaultReorderLevel() {
+  return businessSettings?.default_reorder_level || '10.00';
+}
+
+function getDefaultOrderQuantity() {
+  return businessSettings?.default_order_quantity || '10.00';
+}
+
+function getDefaultWeightUnit() {
+  return businessSettings?.default_weight_unit_abbr || 'kg';
+}
+
+function getDefaultCountUnit() {
+  return businessSettings?.default_count_unit_abbr || 'piece';
+}
+
+function getMinPhoneDigits() {
+  return businessSettings?.min_phone_digits || 10;
+}
+
+function requireEmailValidation() {
+  return businessSettings?.require_email_validation !== false;
+}
+
+function requireBatchTracking() {
+  return businessSettings?.require_batch_tracking !== false;
+}
+
+function requireExpiryDates() {
+  return businessSettings?.require_expiry_dates !== false;
+}
+
+function requireQualityGrades() {
+  return businessSettings?.require_quality_grades !== false;
+}
+
 async function loadCustomers() {
   console.log('[renderer] DEBUG - Raw backend URL:', getBackendUrl());
   console.log('[renderer] DEBUG - Processed BACKEND_API_URL:', BACKEND_API_URL);
@@ -142,6 +201,69 @@ async function loadCustomers() {
     showApiError(errorMessage);
     customers = [];
     populateCustomerDropdown(); // Show empty dropdown with error state
+  }
+}
+
+async function loadBusinessSettings() {
+  if (!BUSINESS_SETTINGS_ENDPOINT) {
+    console.warn('[renderer] Backend URL not configured. Cannot load business settings.');
+    businessSettings = null;
+    return;
+  }
+  
+  try {
+    console.log('[renderer] Loading business settings from:', BUSINESS_SETTINGS_ENDPOINT);
+    const response = await fetchWithTimeout(BUSINESS_SETTINGS_ENDPOINT);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw {
+        status: response.status,
+        statusText: response.statusText,
+        message: errorData.error || `HTTP ${response.status}`
+      };
+    }
+    
+    const data = await response.json();
+    businessSettings = (data.results && data.results[0]) || data;
+    console.log('[renderer] Loaded business settings:', businessSettings);
+  } catch (error) {
+    const errorMessage = handleApiError(error, 'Loading business settings');
+    console.error('[renderer] Failed to load business settings:', errorMessage);
+    showApiError(errorMessage);
+    businessSettings = null;
+  }
+}
+
+async function loadUnits() {
+  if (!UNITS_ENDPOINT) {
+    console.warn('[renderer] Backend URL not configured. Cannot load units.');
+    units = [];
+    return;
+  }
+  
+  try {
+    console.log('[renderer] Loading units of measure from:', UNITS_ENDPOINT);
+    const response = await fetchWithTimeout(UNITS_ENDPOINT);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw {
+        status: response.status,
+        statusText: response.statusText,
+        message: errorData.error || `HTTP ${response.status}`
+      };
+    }
+    
+    const data = await response.json();
+    units = data.results || data;
+    console.log(`[renderer] Loaded ${units.length} units of measure`);
+  } catch (error) {
+    const errorMessage = handleApiError(error, 'Loading units');
+    console.error('[renderer] Failed to load units:', errorMessage);
+    // Fallback to basic units if API fails - NO SILENT FALLBACKS
+    showApiError(errorMessage);
+    units = [];
   }
 }
 
@@ -488,15 +610,7 @@ async function showNewProductDialog(productName, unit = 'kg') {
           <div style="flex: 1;">
             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Unit *</label>
             <select id="productUnit" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-              <option value="kg" ${unit === 'kg' ? 'selected' : ''}>kg</option>
-              <option value="g" ${unit === 'g' ? 'selected' : ''}>g</option>
-              <option value="bunch" ${unit === 'bunch' ? 'selected' : ''}>bunch</option>
-              <option value="head" ${unit === 'head' ? 'selected' : ''}>head</option>
-              <option value="punnet" ${unit === 'punnet' ? 'selected' : ''}>punnet</option>
-              <option value="packet" ${unit === 'packet' ? 'selected' : ''}>packet</option>
-              <option value="box" ${unit === 'box' ? 'selected' : ''}>box</option>
-              <option value="bag" ${unit === 'bag' ? 'selected' : ''}>bag</option>
-              <option value="piece" ${unit === 'piece' ? 'selected' : ''}>piece</option>
+              ${generateUnitOptions(unit)}
             </select>
           </div>
           <div style="flex: 1;">
@@ -706,15 +820,15 @@ async function showInventoryDialog(product, requiredQuantity) {
       <form id="inventoryForm">
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Initial Stock Quantity</label>
-          <input type="number" id="initialStock" min="0" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${Math.max(requiredQuantity, 10)}" placeholder="0">
+          <input type="number" id="initialStock" min="0" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${Math.max(requiredQuantity, parseFloat(getDefaultOrderQuantity()))}" placeholder="0">
         </div>
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Minimum Stock Level</label>
-          <input type="number" id="minLevel" min="0" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="5" placeholder="5">
+          <input type="number" id="minLevel" min="0" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${getDefaultMinimumLevel()}" placeholder="${getDefaultMinimumLevel()}">
         </div>
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Reorder Level</label>
-          <input type="number" id="reorderLevel" min="0" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="10" placeholder="10">
+          <input type="number" id="reorderLevel" min="0" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${getDefaultReorderLevel()}" placeholder="${getDefaultReorderLevel()}">
         </div>
         <div style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Notes</label>
@@ -767,8 +881,8 @@ async function showInventoryDialog(product, requiredQuantity) {
       const inventoryData = {
         product_id: product.id,
         initial_stock: parseFloat(dialog.querySelector('#initialStock').value) || 0,
-        minimum_level: parseFloat(dialog.querySelector('#minLevel').value) || 5,
-        reorder_level: parseFloat(dialog.querySelector('#reorderLevel').value) || 10,
+        minimum_level: parseFloat(dialog.querySelector('#minLevel').value) || parseFloat(getDefaultMinimumLevel()),
+        reorder_level: parseFloat(dialog.querySelector('#reorderLevel').value) || parseFloat(getDefaultReorderLevel()),
         notes: dialog.querySelector('#notes').value.trim()
       };
       
@@ -874,7 +988,7 @@ async function showAddStockDialog(product, requiredQuantity) {
       <form id="addStockForm">
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Quantity to Add *</label>
-          <input type="number" id="addQuantity" required min="0.01" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${Math.max(requiredQuantity, 10)}" placeholder="0">
+          <input type="number" id="addQuantity" required min="0.01" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${Math.max(requiredQuantity, parseFloat(getDefaultOrderQuantity()))}" placeholder="0">
         </div>
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Reason for Addition</label>
@@ -996,7 +1110,7 @@ async function showProcurementDialog(product, requiredQuantity, actionType) {
       <form id="procurementForm">
         <div style="margin-bottom: 12px;">
           <label style="display: block; margin-bottom: 4px; font-weight: 500;">Quantity to ${isProduction ? 'Produce' : 'Order'} *</label>
-          <input type="number" id="orderQuantity" required min="1" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${Math.max(requiredQuantity, 10)}">
+          <input type="number" id="orderQuantity" required min="1" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" value="${Math.max(requiredQuantity, parseFloat(getDefaultOrderQuantity()))}">
         </div>
         ${!isProduction ? `
         <div style="margin-bottom: 12px;">
@@ -1329,6 +1443,8 @@ let products = []; // Store products list from backend
 let departments = []; // Store departments list from backend
 let suppliers = []; // Store suppliers list from backend
 let salesReps = []; // Store sales reps list from backend
+let units = []; // Store units of measure from backend
+let businessSettings = null; // Store business settings from backend
 // Old COMPANY_ALIASES constant removed - not needed for manual selection
 // Old FORWARDER_NAMES constant removed - not needed for manual selection
 
@@ -2368,7 +2484,9 @@ function boot() {
   // Load configurations first
   loadConfigurations();
   
-  // Load customers, products, departments, suppliers, and sales reps from backend
+  // Load business settings, units, customers, products, departments, suppliers, and sales reps from backend
+  loadBusinessSettings();
+  loadUnits();
   loadCustomers();
   loadProducts();
   loadDepartments();
