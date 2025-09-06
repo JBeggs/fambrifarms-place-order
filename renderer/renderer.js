@@ -72,10 +72,10 @@ function handleApiError(error, operation = 'API operation') {
         errorMessage += 'Access denied. Please check authentication.';
         break;
       default:
-        errorMessage += `Server returned error ${error.status}: ${error.statusText || 'Unknown error'}`;
+        errorMessage += `Server returned error ${error.status}: ${error.statusText ? error.statusText : 'No status text'}`;
     }
   } else {
-    errorMessage += error.message || 'Unknown error occurred';
+    errorMessage += error.message ? error.message : 'Unknown error occurred';
   }
   
   return errorMessage;
@@ -112,13 +112,7 @@ function showApiError(message) {
 
 function generateUnitOptions(selectedUnit = '') {
   if (!units || units.length === 0) {
-    console.warn('[renderer] No units loaded, using fallback options');
-    return `
-      <option value="kg" ${selectedUnit === 'kg' ? 'selected' : ''}>kg</option>
-      <option value="g" ${selectedUnit === 'g' ? 'selected' : ''}>g</option>
-      <option value="bunch" ${selectedUnit === 'bunch' ? 'selected' : ''}>bunch</option>
-      <option value="piece" ${selectedUnit === 'piece' ? 'selected' : ''}>piece</option>
-    `;
+    throw new Error('Units not loaded from API. Cannot generate unit options. Check backend connectivity and ensure loadUnits() completes successfully.');
   }
   
   return units.map(unit => 
@@ -128,27 +122,45 @@ function generateUnitOptions(selectedUnit = '') {
 
 // Helper functions to get configurable defaults
 function getDefaultMinimumLevel() {
-  return businessSettings?.default_minimum_level || '5.00';
+  if (!businessSettings?.default_minimum_level) {
+    throw new Error('BusinessSettings not loaded or default_minimum_level not configured');
+  }
+  return businessSettings.default_minimum_level;
 }
 
 function getDefaultReorderLevel() {
-  return businessSettings?.default_reorder_level || '10.00';
+  if (!businessSettings?.default_reorder_level) {
+    throw new Error('BusinessSettings not loaded or default_reorder_level not configured');
+  }
+  return businessSettings.default_reorder_level;
 }
 
 function getDefaultOrderQuantity() {
-  return businessSettings?.default_order_quantity || '10.00';
+  if (!businessSettings?.default_order_quantity) {
+    throw new Error('BusinessSettings not loaded or default_order_quantity not configured');
+  }
+  return businessSettings.default_order_quantity;
 }
 
 function getDefaultWeightUnit() {
-  return businessSettings?.default_weight_unit_abbr || 'kg';
+  if (!businessSettings?.default_weight_unit_abbr) {
+    throw new Error('BusinessSettings not loaded or default_weight_unit_abbr not configured');
+  }
+  return businessSettings.default_weight_unit_abbr;
 }
 
 function getDefaultCountUnit() {
-  return businessSettings?.default_count_unit_abbr || 'piece';
+  if (!businessSettings?.default_count_unit_abbr) {
+    throw new Error('BusinessSettings not loaded or default_count_unit_abbr not configured');
+  }
+  return businessSettings.default_count_unit_abbr;
 }
 
 function getMinPhoneDigits() {
-  return businessSettings?.min_phone_digits || 10;
+  if (!businessSettings?.min_phone_digits) {
+    throw new Error('BusinessSettings not loaded or min_phone_digits not configured');
+  }
+  return businessSettings.min_phone_digits;
 }
 
 function requireEmailValidation() {
@@ -304,7 +316,11 @@ function validatePrice(price, historicalAverage = null) {
   // If we have historical data, do a basic variance check
   if (historicalAverage && historicalAverage > 0) {
     const variance = Math.abs((price - historicalAverage) / historicalAverage) * 100;
-    const maxVariance = businessSettings?.max_price_variance_percent || 20;
+    
+    if (!businessSettings?.max_price_variance_percent) {
+      throw new Error('BusinessSettings not loaded or max_price_variance_percent not configured');
+    }
+    const maxVariance = businessSettings.max_price_variance_percent;
     
     if (variance > maxVariance * 2) { // Double threshold for extreme variance
       return {
@@ -342,16 +358,24 @@ async function loadCustomers() {
     const response = await fetchWithTimeout(CUSTOMERS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    customers = data.customers || [];
+    if (!data.customers) {
+      throw new Error('Invalid API response: customers field missing');
+    }
+    customers = data.customers;
     
     console.log('[renderer] Loaded customers:', customers.length);
     populateCustomerDropdown();
@@ -376,16 +400,27 @@ async function loadBusinessSettings() {
     const response = await fetchWithTimeout(BUSINESS_SETTINGS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    businessSettings = (data.results && data.results[0]) || data;
+    if (data.results && data.results.length > 0) {
+      businessSettings = data.results[0];
+    } else if (data && !data.results) {
+      businessSettings = data;
+    } else {
+      throw new Error('Invalid BusinessSettings API response: no data found');
+    }
     console.log('[renderer] Loaded business settings:', businessSettings);
   } catch (error) {
     const errorMessage = handleApiError(error, 'Loading business settings');
@@ -407,16 +442,27 @@ async function loadUnits() {
     const response = await fetchWithTimeout(UNITS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    units = data.results || data;
+    if (data.results) {
+      units = data.results;
+    } else if (Array.isArray(data)) {
+      units = data;
+    } else {
+      throw new Error('Invalid Units API response: expected array or results field');
+    }
     console.log(`[renderer] Loaded ${units.length} units of measure`);
   } catch (error) {
     const errorMessage = handleApiError(error, 'Loading units');
@@ -439,16 +485,27 @@ async function loadProducts() {
     const response = await fetchWithTimeout(PRODUCTS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    products = data.results || data || []; // Handle paginated or direct array response
+    if (data.results) {
+      products = data.results;
+    } else if (Array.isArray(data)) {
+      products = data;
+    } else {
+      throw new Error('Invalid Products API response: expected array or results field');
+    }
     console.log('[renderer] Loaded products:', products.length);
     
   } catch (error) {
@@ -480,9 +537,16 @@ function populateCustomerDropdown() {
     option.value = customer.id;
     
     // Display format: "Business Name - Branch (First Last)" or "Business Name (First Last)"
-    const businessName = customer.restaurant_profile?.business_name || 'Unknown Business';
+    const businessName = customer.restaurant_profile?.business_name;
+    if (!businessName) {
+      console.error('[renderer] Customer missing business_name:', customer);
+      return; // Skip customers without business name
+    }
+    
     const branchName = customer.restaurant_profile?.branch_name;
-    const contactName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+    const firstName = customer.first_name ? customer.first_name : '';
+    const lastName = customer.last_name ? customer.last_name : '';
+    const contactName = `${firstName} ${lastName}`.trim();
     
     let displayName = businessName;
     if (branchName) {
@@ -519,11 +583,16 @@ async function createNewCustomer(customerData) {
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
@@ -555,16 +624,27 @@ async function loadDepartments() {
     const response = await fetchWithTimeout(DEPARTMENTS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    departments = data.results || data || []; // Handle paginated or direct array response
+    if (data.results) {
+      departments = data.results;
+    } else if (Array.isArray(data)) {
+      departments = data;
+    } else {
+      throw new Error('Invalid Departments API response: expected array or results field');
+    }
     console.log('[renderer] Loaded departments:', departments.length);
     
   } catch (error) {
@@ -586,16 +666,27 @@ async function loadSuppliers() {
     const response = await fetchWithTimeout(SUPPLIERS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    suppliers = data.results || data || []; // Handle paginated or direct array response
+    if (data.results) {
+      suppliers = data.results;
+    } else if (Array.isArray(data)) {
+      suppliers = data;
+    } else {
+      throw new Error('Invalid Suppliers API response: expected array or results field');
+    }
     console.log('[renderer] Loaded suppliers:', suppliers.length);
     
   } catch (error) {
@@ -617,16 +708,27 @@ async function loadSalesReps() {
     const response = await fetchWithTimeout(SALES_REPS_ENDPOINT);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
     const data = await response.json();
-    salesReps = data.results || data || []; // Handle paginated or direct array response
+    if (data.results) {
+      salesReps = data.results;
+    } else if (Array.isArray(data)) {
+      salesReps = data;
+    } else {
+      throw new Error('Invalid Sales Reps API response: expected array or results field');
+    }
     console.log('[renderer] Loaded sales reps:', salesReps.length);
     
   } catch (error) {
@@ -667,9 +769,9 @@ function getInventoryStatus(product) {
   
   // Check if inventory record exists (available_quantity is null/undefined means no inventory record)
   const hasInventoryRecord = product.available_quantity !== null && product.available_quantity !== undefined;
-  const availableQty = product.available_quantity || 0;
-  const reservedQty = product.reserved_quantity || 0;
-  const needsProduction = product.needs_production || false;
+  const availableQty = product.available_quantity !== undefined ? product.available_quantity : 0;
+  const reservedQty = product.reserved_quantity !== undefined ? product.reserved_quantity : 0;
+  const needsProduction = product.needs_production === true;
   
   if (!hasInventoryRecord) {
   return {
@@ -719,11 +821,16 @@ async function createNewProduct(productData) {
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
@@ -842,8 +949,20 @@ async function showNewProductDialog(productName, unit = 'kg') {
       };
       
       // Basic validation
-      if (!productData.name || !productData.unit || !productData.price || !productData.department) {
-        showError('Please fill in all required fields (marked with *)');
+      if (!productData.name) {
+        showError('Product name is required');
+        return;
+      }
+      if (!productData.unit) {
+        showError('Product unit is required');
+        return;
+      }
+      if (!productData.price) {
+        showError('Product price is required');
+        return;
+      }
+      if (!productData.department) {
+        showError('Product department is required');
         return;
       }
       
@@ -893,11 +1012,16 @@ async function createProcurementOrder(orderData) {
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
@@ -930,16 +1054,21 @@ async function createInventoryRecord(inventoryData) {
       },
       body: JSON.stringify({
         create_inventory: true,
-        initial_stock: inventoryData.initial_stock || 0
+        initial_stock: inventoryData.initial_stock !== undefined ? inventoryData.initial_stock : 0
       })
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
@@ -1100,11 +1229,16 @@ async function updateInventoryStock(productId, addQuantity) {
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('[renderer] Failed to parse error response JSON:', jsonError);
+      }
       throw {
         status: response.status,
         statusText: response.statusText,
-        message: errorData.error || `HTTP ${response.status}`
+        message: errorData.error ? errorData.error : `HTTP ${response.status}: ${response.statusText}`
       };
     }
     
@@ -1136,7 +1270,7 @@ async function showAddStockDialog(product, requiredQuantity) {
       width: 400px; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     `;
     
-    const currentStock = product.available_quantity || 0;
+    const currentStock = product.available_quantity !== undefined ? product.available_quantity : 0;
     
     dialog.innerHTML = `
       <h3 style="margin: 0 0 16px 0; color: #333;">Add Existing Stock</h3>
@@ -1263,7 +1397,7 @@ async function showAddStockDialog(product, requiredQuantity) {
       }
       
       // Basic validation
-      if (!addQuantity || addQuantity <= 0) {
+      if (!addQuantity || isNaN(addQuantity) || addQuantity <= 0) {
         showError('Please enter a valid quantity to add');
         return;
       }
@@ -1327,7 +1461,7 @@ async function showProcurementDialog(product, requiredQuantity, actionType) {
       <h3 style="margin: 0 0 16px 0; color: #333;">${title}</h3>
       <p style="margin: 0 0 16px 0; color: #666; font-size: 14px;">
         ${product.name} - Required: ${requiredQuantity} ${product.unit}
-        <br>Current stock: ${product.available_quantity || 0} ${product.unit}
+        <br>Current stock: ${product.available_quantity !== undefined ? product.available_quantity : 0} ${product.unit}
       </p>
       <form id="procurementForm">
         <div style="margin-bottom: 12px;">
