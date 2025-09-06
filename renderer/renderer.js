@@ -80,18 +80,34 @@ const FORWARDER_NAMES = getForwarderNames();
 let PATTERNS_CONFIG = null;
 let VALIDATION_CONFIG = null;
 
-async function loadConfigurations() {
+function loadConfigurations() {
   try {
-    const patternsResponse = await fetch('./config/patterns.json');
-    PATTERNS_CONFIG = await patternsResponse.json();
+    if (window.api && typeof window.api.getPatternsConfig === 'function') {
+      PATTERNS_CONFIG = window.api.getPatternsConfig();
+      if (!PATTERNS_CONFIG || Object.keys(PATTERNS_CONFIG).length === 0) {
+        console.warn('[renderer] Empty patterns config, using defaults');
+        PATTERNS_CONFIG = getDefaultPatternsConfig();
+      }
+    } else {
+      console.warn('[renderer] getPatternsConfig not available, using defaults');
+      PATTERNS_CONFIG = getDefaultPatternsConfig();
+    }
   } catch (error) {
     console.error('[renderer] Failed to load patterns config:', error);
     PATTERNS_CONFIG = getDefaultPatternsConfig();
   }
   
   try {
-    const validationResponse = await fetch('./config/validation.json');
-    VALIDATION_CONFIG = await validationResponse.json();
+    if (window.api && typeof window.api.getValidationConfig === 'function') {
+      VALIDATION_CONFIG = window.api.getValidationConfig();
+      if (!VALIDATION_CONFIG || Object.keys(VALIDATION_CONFIG).length === 0) {
+        console.warn('[renderer] Empty validation config, using defaults');
+        VALIDATION_CONFIG = getDefaultValidationConfig();
+      }
+    } else {
+      console.warn('[renderer] getValidationConfig not available, using defaults');
+      VALIDATION_CONFIG = getDefaultValidationConfig();
+    }
   } catch (error) {
     console.error('[renderer] Failed to load validation config:', error);
     VALIDATION_CONFIG = getDefaultValidationConfig();
@@ -903,9 +919,9 @@ btnSubmitAll.addEventListener('click', async () => { saveForm(); let okCount = 0
 btnRemove.addEventListener('click', () => { saveForm(); orders.splice(current, 1); if (!orders.length) orders.push({ company_name: '', sender_phone: '', items_text: [], removed: new Set(), verified: false }); current = Math.min(current, orders.length - 1); renderList(); loadForm(); });
 btnClose.addEventListener('click', () => window.close());
 
-async function boot() {
+function boot() {
   // Load configurations first
-  await loadConfigurations();
+  loadConfigurations();
   
   // Initialize LABEL_STOPWORDS from config
   if (VALIDATION_CONFIG && VALIDATION_CONFIG.label_stopwords) {

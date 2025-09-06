@@ -139,6 +139,31 @@ app.whenReady().then(async () => {
       event.returnValue = {};
     }
   });
+
+  // Sync config readers for preload
+  ipcMain.on('read-patterns-config-sync', (event) => {
+    try {
+      const filePath = path.join(__dirname, 'config', 'patterns.json');
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const obj = JSON.parse(raw);
+      event.returnValue = (obj && typeof obj === 'object') ? obj : {};
+    } catch (error) {
+      console.error('[main] Failed to read patterns config:', error.message);
+      event.returnValue = {};
+    }
+  });
+
+  ipcMain.on('read-validation-config-sync', (event) => {
+    try {
+      const filePath = path.join(__dirname, 'config', 'validation.json');
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const obj = JSON.parse(raw);
+      event.returnValue = (obj && typeof obj === 'object') ? obj : {};
+    } catch (error) {
+      console.error('[main] Failed to read validation config:', error.message);
+      event.returnValue = {};
+    }
+  });
   
   ipcMain.on('get-image-path', (event, filename) => {
     try {
@@ -166,6 +191,29 @@ app.whenReady().then(async () => {
     }, 140);
   }
 
+  // Temporarily disable WhatsApp reader for manual processing development
+  console.log('[main] WhatsApp reader disabled - using manual processing mode');
+  
+  // For development, we can simulate some test data
+  if (process.env.NODE_ENV === 'development' || process.argv.includes('--dev')) {
+    setTimeout(() => {
+      const testPayload = {
+        items_text: [
+          '[14:10] Karl → Pls add spinach x1box \\nPotatoes 10kg \\nSeperate invoice \\nThanks',
+          '[14:10] Karl → Mugg Been',
+          '[09:44] → Venue',
+          '[10:38] → Good morning may I please order \\n2×5kgTomato \\n2×5kgMushroom \\n10kgOnions \\nTnx that\'s all',
+          '[10:38] → Debonairs'
+        ]
+      };
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('payload', testPayload);
+      }
+      showWindowOnce();
+    }, 500);
+  }
+  
+  /* ORIGINAL READER CODE - DISABLED FOR MANUAL PROCESSING
   try {
     console.log('[main] starting reader');
     reader = await startReader(process.env, (batch) => {
@@ -228,6 +276,7 @@ app.whenReady().then(async () => {
       }
     }, 300);
   }
+  */ // END DISABLED READER CODE
 
   // Safety fallback: show the window even if no payload yet after 10s
   setTimeout(() => { showWindowOnce(); }, 10000);

@@ -49,6 +49,24 @@ function getForwarderNames() {
   }
 }
 
+function getPatternsConfig() {
+  try { 
+    return ipcRenderer.sendSync('read-patterns-config-sync'); 
+  } catch (error) {
+    console.error('[preload] Failed to get patterns config:', error.message);
+    return {}; 
+  }
+}
+
+function getValidationConfig() {
+  try { 
+    return ipcRenderer.sendSync('read-validation-config-sync'); 
+  } catch (error) {
+    console.error('[preload] Failed to get validation config:', error.message);
+    return {}; 
+  }
+}
+
 contextBridge.exposeInMainWorld('api', {
   onPayload: (cb) => ipcRenderer.on('payload', (_e, d) => cb(d)),
   onPayloadDebug: (cb) => ipcRenderer.on('payload_debug', (_e, d) => cb(d)),
@@ -57,6 +75,8 @@ contextBridge.exposeInMainWorld('api', {
   getBackendUrl: () => process.env.BACKEND_API_URL || '',
   getCompanyAliases,
   getForwarderNames,
+  getPatternsConfig,
+  getValidationConfig,
   getImagePath: (filename) => {
     // Send sync request to main process to get the image path
     return ipcRenderer.sendSync('get-image-path', filename);

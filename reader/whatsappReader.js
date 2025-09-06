@@ -47,7 +47,9 @@ export async function startReader(env, onBatch) {
   }
 
   const options = new chrome.Options();
-  options.addArguments(`--user-data-dir=${sessionPath}`);
+  // Make session path unique to avoid conflicts with other instances
+  const uniqueSessionPath = `${sessionPath}_${Date.now()}_${process.pid}`;
+  options.addArguments(`--user-data-dir=${uniqueSessionPath}`);
   if (headless) options.addArguments('--headless=new', '--disable-gpu', '--window-size=1920,1080', '--disable-dev-shm-usage');
 
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
