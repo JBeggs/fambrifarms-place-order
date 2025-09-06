@@ -8,6 +8,28 @@
 </head>
 <body>
   <div class="wrap">
+    <!-- Top Navigation Bar -->
+    <div class="top-nav">
+      <div class="nav-brand">
+        <h1>🚚 Fambri Farms - Place Order</h1>
+      </div>
+      <div class="nav-tabs">
+        <button id="tabMessages" class="nav-tab">
+          <span class="nav-icon">💬</span>
+          Messages
+        </button>
+        <button id="tabOrders" class="nav-tab">
+          <span class="nav-icon">📋</span>
+          Orders
+        </button>
+        <button id="tabDebug" class="nav-tab">
+          <span class="nav-icon">🔧</span>
+          Debug
+        </button>
+      </div>
+    </div>
+    
+    <!-- Sidebar (only visible in Messages view) -->
     <div class="sidebar">
       <h3>WhatsApp Messages</h3>
       <div id="messageControls" style="margin-bottom: 8px;">
@@ -15,11 +37,6 @@
         <button id="clearSelection" class="btn-small">Clear</button>
       </div>
       <div id="messagesList" class="messages-list"></div>
-      <div style="margin-top:12px;">
-        <button id="tabMessages">Messages</button>
-        <button id="tabOrders">Orders</button>
-        <button id="tabDebug">Debug</button>
-      </div>
     </div>
     <div class="content" id="panelMessages">
       <div class="topbar">

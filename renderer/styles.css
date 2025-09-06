@@ -53,7 +53,11 @@ html, body {
 .wrap {
   display: grid;
   grid-template-columns: 380px 1fr;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: 
+    "nav nav"
+    "sidebar content"
+    "footer footer";
   height: 100vh;
   background: var(--bg-secondary);
   transition: grid-template-columns 0.3s ease;
@@ -63,6 +67,10 @@ html, body {
 .wrap.orders-view,
 .wrap.debug-view {
   grid-template-columns: 1fr;
+  grid-template-areas: 
+    "nav"
+    "content"
+    "footer";
 }
 
 .wrap.orders-view .sidebar,
@@ -70,8 +78,73 @@ html, body {
   display: none;
 }
 
+/* Top Navigation Bar */
+.top-nav {
+  grid-area: nav;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+}
+
+.nav-brand h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-tab {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-tab:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-icon {
+  font-size: 1rem;
+}
+
+/* Active tab states */
+.wrap.messages-view .nav-tab:nth-child(1),
+.wrap.orders-view .nav-tab:nth-child(2),
+.wrap.debug-view .nav-tab:nth-child(3) {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
 /* Sidebar styling */
 .sidebar {
+  grid-area: sidebar;
   background: var(--bg-primary);
   border-right: 1px solid var(--border-color);
   padding: 1.5rem;
@@ -204,6 +277,7 @@ html, body {
 
 /* Content area */
 .content {
+  grid-area: content;
   background: var(--bg-primary);
   padding: 1.5rem;
   display: grid;
@@ -558,7 +632,7 @@ input[type="checkbox"] {
 
 /* Footer */
 .footer {
-  grid-column: 1 / span 2;
+  grid-area: footer;
   background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
   padding: 1rem 1.5rem;
@@ -648,6 +722,35 @@ input[type="checkbox"] {
   
   .content {
     padding: 1rem;
+  }
+  
+  .top-nav {
+    padding: 0.75rem 1rem;
+  }
+  
+  .nav-brand h1 {
+    font-size: 1rem;
+  }
+  
+  .nav-tab {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-brand h1 {
+    display: none;
+  }
+  
+  .nav-tabs {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .nav-tab {
+    flex: 1;
+    justify-content: center;
   }
 }
 
@@ -876,38 +979,7 @@ li.active {
   border: 1px solid var(--border-color);
 }
 
-/* Tab buttons styling */
-#tabMessages, #tabOrders, #tabDebug {
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-#tabMessages:hover, #tabOrders:hover, #tabDebug:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-#tabMessages.active, #tabOrders.active, #tabDebug.active {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-/* Active tab states based on view */
-.wrap.messages-view #tabMessages,
-.wrap.orders-view #tabOrders,
-.wrap.debug-view #tabDebug {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
+/* Legacy tab button styling removed - now using top nav */
 
 /* Print styles */
 @media print {
