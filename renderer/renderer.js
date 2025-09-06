@@ -464,12 +464,10 @@ async function loadUnits() {
     }
     
     const data = await response.json();
-    if (data.results) {
-      units = data.results;
-    } else if (Array.isArray(data)) {
+    if (Array.isArray(data)) {
       units = data;
     } else {
-      throw new Error('Invalid Units API response: expected array or results field');
+      throw new Error('Invalid Units API response: expected array');
     }
     console.log(`[renderer] Loaded ${units.length} units of measure`);
   } catch (error) {
@@ -2939,7 +2937,7 @@ function handleCustomerSelect(e) {
       if (newCustomer) {
         // Select the newly created customer
         customerSelectEl.value = newCustomer.id;
-      } else {
+  } else {
         // Reset to empty if cancelled
         customerSelectEl.value = '';
       }
@@ -3310,10 +3308,10 @@ function initializeApp() {
   // Set up event listeners
   if (tabMessages) {
     tabMessages.addEventListener('click', () => showPanel('messages'));
-  }
-  if (tabDebug) {
-    tabDebug.addEventListener('click', () => showPanel('debug'));
-  }
+}
+if (tabDebug) {
+  tabDebug.addEventListener('click', () => showPanel('debug'));
+}
   
   // Set up main app event listeners
   setupEventListeners();
