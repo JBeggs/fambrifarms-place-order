@@ -484,6 +484,17 @@ input[type="checkbox"] {
   border-color: var(--info-color);
 }
 
+.btn-create-po {
+  background: #f0fdf4;
+  color: var(--success-color);
+  border-color: #bbf7d0;
+}
+
+.btn-create-po:hover {
+  background: #dcfce7;
+  border-color: var(--success-color);
+}
+
 /* Orders panel */
 #panelOrders {
   grid-template-rows: auto auto 1fr;

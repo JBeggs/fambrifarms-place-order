@@ -218,6 +218,11 @@ function renderOrdersList() {
     editBtn.textContent = 'Edit';
     editBtn.onclick = () => editOrder(order.id);
     
+    const createPOBtn = document.createElement('button');
+    createPOBtn.className = 'btn-small btn-create-po';
+    createPOBtn.textContent = 'Create PO';
+    createPOBtn.onclick = () => showCreatePODialog(order);
+    
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn-small btn-delete';
     deleteBtn.textContent = 'Delete';
@@ -225,6 +230,7 @@ function renderOrdersList() {
     
     actionsDiv.appendChild(viewBtn);
     actionsDiv.appendChild(editBtn);
+    actionsDiv.appendChild(createPOBtn);
     actionsDiv.appendChild(deleteBtn);
     
     orderDiv.appendChild(contentDiv);
@@ -372,6 +378,200 @@ async function convertOrderItemsForBackend(frontendItems) {
   }
   
   return convertedItems;
+}
+
+// Purchase Order creation functions
+async function showCreatePODialog(order) {
+  try {
+    // Load suppliers and get the first one as default
+    const suppliers = await loadSuppliers();
+    if (!suppliers || suppliers.length === 0) {
+      alert('No suppliers found. Please add suppliers first.');
+      return;
+    }
+    
+    const defaultSupplier = suppliers[0];
+    const salesReps = await loadSalesReps(defaultSupplier.id);
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.5); z-index: 1000; display: flex; 
+      align-items: center; justify-content: center;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: white; padding: 20px; border-radius: 8px; 
+      max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;
+    `;
+    
+    dialog.innerHTML = `
+      <h3>Create Purchase Order</h3>
+      <p><strong>Order:</strong> ${order.order_number}</p>
+      <p><strong>Customer:</strong> ${order.restaurant_business_name || order.restaurant_name}</p>
+      <p><strong>Items:</strong> ${order.items ? order.items.length : 0} products</p>
+      <hr>
+      
+      <div style="margin: 15px 0;">
+        <label><strong>Supplier:</strong></label>
+        <select id="supplierSelect" style="width: 100%; padding: 8px; margin-top: 5px;">
+          ${suppliers.map(s => `<option value="${s.id}" ${s.id === defaultSupplier.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+        </select>
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <label><strong>Sales Rep:</strong></label>
+        <select id="salesRepSelect" style="width: 100%; padding: 8px; margin-top: 5px;">
+          <option value="">Select Sales Rep (Optional)</option>
+          ${salesReps.map(sr => `<option value="${sr.id}">${sr.name} - ${sr.position || 'Sales Rep'}</option>`).join('')}
+        </select>
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <label><strong>Expected Delivery Date:</strong></label>
+        <input type="date" id="deliveryDate" style="width: 100%; padding: 8px; margin-top: 5px;" value="${order.delivery_date || ''}">
+      </div>
+      
+      <div style="margin: 15px 0;">
+        <label><strong>Notes:</strong></label>
+        <textarea id="poNotes" rows="3" style="width: 100%; padding: 8px; margin-top: 5px;" placeholder="Additional notes for the purchase order..."></textarea>
+      </div>
+      
+      <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button id="cancelPO" style="padding: 8px 16px; background: #ccc; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+        <button id="createPO" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Create PO</button>
+      </div>
+    `;
+    
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+    
+    // Handle supplier change to update sales reps
+    const supplierSelect = dialog.querySelector('#supplierSelect');
+    const salesRepSelect = dialog.querySelector('#salesRepSelect');
+    
+    supplierSelect.addEventListener('change', async () => {
+      const selectedSupplierId = supplierSelect.value;
+      const newSalesReps = await loadSalesReps(selectedSupplierId);
+      
+      salesRepSelect.innerHTML = '<option value="">Select Sales Rep (Optional)</option>' +
+        newSalesReps.map(sr => `<option value="${sr.id}">${sr.name} - ${sr.position || 'Sales Rep'}</option>`).join('');
+    });
+    
+    // Handle buttons
+    dialog.querySelector('#cancelPO').onclick = () => {
+      document.body.removeChild(modal);
+    };
+    
+    dialog.querySelector('#createPO').onclick = async () => {
+      const selectedSupplierId = supplierSelect.value;
+      const selectedSalesRepId = salesRepSelect.value || null;
+      const deliveryDate = dialog.querySelector('#deliveryDate').value || null;
+      const notes = dialog.querySelector('#poNotes').value.trim();
+      
+      try {
+        const result = await createPurchaseOrderFromOrder(order, selectedSupplierId, selectedSalesRepId, deliveryDate, notes);
+        if (result.success) {
+          alert(`Purchase Order ${result.po_number} created successfully!`);
+          document.body.removeChild(modal);
+        } else {
+          alert(`Failed to create PO: ${result.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error creating PO:', error);
+        alert(`Failed to create PO: ${error.message}`);
+      }
+    };
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error showing create PO dialog:', error);
+    alert(`Failed to load suppliers: ${error.message}`);
+  }
+}
+
+async function loadSuppliers() {
+  const { ENDPOINTS, makeApiCall } = await import('./apiUtils.js');
+  
+  if (!ENDPOINTS.SUPPLIERS) {
+    throw new Error('Suppliers endpoint not configured');
+  }
+  
+  try {
+    const data = await makeApiCall(ENDPOINTS.SUPPLIERS);
+    return data.results || data || [];
+  } catch (error) {
+    console.error('Failed to load suppliers:', error);
+    throw error;
+  }
+}
+
+async function loadSalesReps(supplierId) {
+  const { ENDPOINTS, makeApiCall } = await import('./apiUtils.js');
+  
+  if (!ENDPOINTS.SALES_REPS) {
+    throw new Error('Sales reps endpoint not configured');
+  }
+  
+  try {
+    const data = await makeApiCall(`${ENDPOINTS.SALES_REPS}?supplier=${supplierId}&is_active=true`);
+    return data.results || data || [];
+  } catch (error) {
+    console.error('Failed to load sales reps:', error);
+    return []; // Return empty array if sales reps fail to load
+  }
+}
+
+async function createPurchaseOrderFromOrder(order, supplierId, salesRepId, deliveryDate, notes) {
+  const { ENDPOINTS, makeApiCall } = await import('./apiUtils.js');
+  
+  if (!ENDPOINTS.PROCUREMENT) {
+    throw new Error('Procurement endpoint not configured');
+  }
+  
+  try {
+    // For now, create a simple PO with the first item from the order
+    // In the future, this could be enhanced to handle multiple items or let user select items
+    const firstItem = order.items && order.items.length > 0 ? order.items[0] : null;
+    
+    if (!firstItem) {
+      throw new Error('Order has no items to create PO from');
+    }
+    
+    const poData = {
+      supplier_id: supplierId,
+      sales_rep_id: salesRepId,
+      product_id: firstItem.product,
+      quantity: Math.ceil(parseFloat(firstItem.quantity) || 1),
+      unit_price: parseFloat(firstItem.price) || 0,
+      expected_delivery_date: deliveryDate,
+      notes: notes || `PO created from order ${order.order_number} for ${order.restaurant_business_name || order.restaurant_name}`
+    };
+    
+    console.log('Creating PO with data:', poData);
+    
+    const result = await makeApiCall(ENDPOINTS.PROCUREMENT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(poData)
+    });
+    
+    return result;
+    
+  } catch (error) {
+    console.error('Failed to create purchase order:', error);
+    throw error;
+  }
 }
 
 // Getters and setters
