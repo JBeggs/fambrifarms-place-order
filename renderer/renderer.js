@@ -2088,6 +2088,7 @@ function formatItemText(quantity, name, unit, isImage = false) {
 // Old normalizePayload function removed - replaced by manual selection parsing
 
 function renderMessagesList() {
+  if (!messagesListEl) return;
   messagesListEl.innerHTML = '';
   
   if (!rawMessages.length) {
@@ -2181,6 +2182,7 @@ function toggleMessageSelection(messageId) {
 }
 
 function renderSelectedMessages() {
+  if (!selectedMessagesListEl) return;
   selectedMessagesListEl.innerHTML = '';
   
   if (selectedMessageIds.size === 0) {
@@ -2217,6 +2219,7 @@ function renderSelectedMessages() {
 }
 
 function renderOrderPreview() {
+  if (!orderPreviewEl) return;
   orderPreviewEl.innerHTML = '';
   
   if (selectedMessageIds.size === 0) {
@@ -2969,7 +2972,7 @@ function boot() {
   }
   
   if (!p) { 
-    hintEl.textContent = 'Waiting for WhatsApp messages…'; 
+    if (hintEl) hintEl.textContent = 'Waiting for WhatsApp messages…'; 
     return; 
   }
   
@@ -3090,7 +3093,7 @@ function boot() {
   }
   
   if (rawMessages.length === 0) { 
-    hintEl.textContent = 'No messages in payload'; 
+    if (hintEl) hintEl.textContent = 'No messages in payload'; 
     return; 
   }
   
@@ -3117,7 +3120,7 @@ if (window.api && typeof window.api.onPayload === 'function') {
     
     if (payload && payload.error) {
       const errorMessage = payload.message ? payload.message : payload.error;
-      hintEl.textContent = `Reader error: ${errorMessage}`;
+      if (hintEl) hintEl.textContent = `Reader error: ${errorMessage}`;
       return;
     }
     
