@@ -19,9 +19,13 @@ const btnSkipMessages = document.getElementById('skipMessages');
 const btnClose = document.getElementById('close');
 
 function getBackendUrl() {
-  if (!window.api || typeof window.api.getBackendUrl !== 'function') {
+  if (!window.api) {
+    console.error('[renderer] window.api not available');
+    throw new Error('window.api not available - preload script failed');
+  }
+  if (typeof window.api.getBackendUrl !== 'function') {
     console.error('[renderer] window.api.getBackendUrl not available');
-    return '';
+    throw new Error('window.api.getBackendUrl not available - preload script incomplete');
   }
   try {
     return window.api.getBackendUrl();
@@ -36,7 +40,9 @@ function getBackendUrl() {
 let BACKEND_API_URL = getBackendUrl();
 
 // Handle if .env contains /api/ path - remove it to get base URL
-if (BACKEND_API_URL.endsWith('/api/') || BACKEND_API_URL.endsWith('/api')) {
+if (BACKEND_API_URL.endsWith('/api/')) {
+  BACKEND_API_URL = BACKEND_API_URL.replace(/\/api\/$/, '');
+} else if (BACKEND_API_URL.endsWith('/api')) {
   BACKEND_API_URL = BACKEND_API_URL.replace(/\/api\/?$/, '');
 }
 
@@ -111,7 +117,10 @@ function showApiError(message) {
 }
 
 function generateUnitOptions(selectedUnit = '') {
-  if (!units || units.length === 0) {
+  if (!units) {
+    throw new Error('Units data is required but not loaded');
+  }
+  if (units.length === 0) {
     throw new Error('Units not loaded from API. Cannot generate unit options. Check backend connectivity and ensure loadUnits() completes successfully.');
   }
   
@@ -203,7 +212,15 @@ function convertQuantity(quantity, fromUnit, toUnit) {
    * Convert quantity from one unit to another
    * Uses base_unit_multiplier for conversion
    */
-  if (!fromUnit || !toUnit || fromUnit.abbreviation === toUnit.abbreviation) {
+  if (!fromUnit) {
+    console.warn('[renderer] From unit not found for conversion');
+    return null;
+  }
+  if (!toUnit) {
+    console.warn('[renderer] To unit not found for conversion');
+    return null;
+  }
+  if (fromUnit.abbreviation === toUnit.abbreviation) {
     return quantity;
   }
   
@@ -221,7 +238,14 @@ function getUnitConversionInfo(supplierUnit, internalUnit) {
   const fromUnit = findUnitByAbbreviation(supplierUnit);
   const toUnit = findUnitByAbbreviation(internalUnit);
   
-  if (!fromUnit || !toUnit) {
+  if (!fromUnit) {
+    console.warn('[renderer] From unit not found for conversion info');
+    return null;
+  }
+  if (!toUnit) {
+    console.warn('[renderer] To unit not found for conversion info');
+    return null;
+  }
     return {
       canConvert: false,
       error: 'Unit not found in system'
@@ -297,7 +321,11 @@ function validatePrice(price, historicalAverage = null) {
    * Validate price against business rules
    * This is a frontend validation - backend will do the full historical analysis
    */
-  if (!price || price <= 0) {
+  if (!price) {
+    console.warn('[renderer] Price is required for validation');
+    return { isValid: false, message: 'Price is required' };
+  }
+  if (price <= 0) {
     return {
       isValid: false,
       message: 'Price must be greater than 0'
@@ -739,7 +767,14 @@ async function loadSalesReps() {
 }
 
 function findProductByName(productName) {
-  if (!productName || !products.length) return null;
+  if (!productName) {
+    console.warn('[renderer] Product name is required for search');
+    return null;
+  }
+  if (!products.length) {
+    console.warn('[renderer] No products available for search');
+    return null;
+  }
   
   const normalizedName = productName.toLowerCase().trim();
   
@@ -1169,9 +1204,9 @@ async function showInventoryDialog(product, requiredQuantity) {
       
       const inventoryData = {
         product_id: product.id,
-        initial_stock: parseFloat(dialog.querySelector('#initialStock').value) || 0, // User input fallback acceptable
-        minimum_level: parseFloat(dialog.querySelector('#minLevel').value) || parseFloat(getDefaultMinimumLevel()),
-        reorder_level: parseFloat(dialog.querySelector('#reorderLevel').value) || parseFloat(getDefaultReorderLevel()),
+        initial_stock: parseFloat(dialog.querySelector('#initialStock').value) ? parseFloat(dialog.querySelector('#initialStock').value) : 0,
+        minimum_level: parseFloat(dialog.querySelector('#minLevel').value) ? parseFloat(dialog.querySelector('#minLevel').value) : parseFloat(getDefaultMinimumLevel()),
+        reorder_level: parseFloat(dialog.querySelector('#reorderLevel').value) ? parseFloat(dialog.querySelector('#reorderLevel').value) : parseFloat(getDefaultReorderLevel()),
         notes: dialog.querySelector('#notes').value.trim()
       };
       
@@ -1397,7 +1432,15 @@ async function showAddStockDialog(product, requiredQuantity) {
       }
       
       // Basic validation
-      if (!addQuantity || isNaN(addQuantity) || addQuantity <= 0) {
+      if (!addQuantity) {
+        showError('Add quantity is required');
+        return;
+      }
+      if (isNaN(addQuantity)) {
+        showError('Add quantity must be a valid number');
+        return;
+      }
+      if (addQuantity <= 0) {
         showError('Please enter a valid quantity to add');
         return;
       }
@@ -1591,7 +1634,7 @@ async function showProcurementDialog(product, requiredQuantity, actionType) {
       } else {
         const supplierId = dialog.querySelector('#supplierSelect').value;
         const salesRepId = dialog.querySelector('#salesRepSelect').value;
-        const unitPrice = parseFloat(dialog.querySelector('#unitPrice').value) || 0;
+        const unitPrice = parseFloat(dialog.querySelector('#unitPrice').value) ? parseFloat(dialog.querySelector('#unitPrice').value) : 0;
         const deliveryDate = dialog.querySelector('#deliveryDate').value;
         
         if (!supplierId) {
@@ -1600,13 +1643,17 @@ async function showProcurementDialog(product, requiredQuantity, actionType) {
         }
         
         orderData.supplier_id = supplierId;
-        orderData.sales_rep_id = salesRepId || null;
+        orderData.sales_rep_id = salesRepId ? salesRepId : null;
         orderData.unit_price = unitPrice;
         orderData.expected_delivery_date = deliveryDate;
       }
       
       // Basic validation
-      if (!quantity || quantity <= 0) {
+      if (!quantity) {
+        showError('Quantity is required');
+        return;
+      }
+      if (quantity <= 0) {
         showError('Please enter a valid quantity');
         return;
       }
@@ -1752,8 +1799,31 @@ async function showNewCustomerDialog() {
       };
       
       // Basic validation
-      if (!customerData.business_name || !customerData.first_name || !customerData.last_name || 
-          !customerData.email || !customerData.phone || !customerData.address || !customerData.city) {
+      if (!customerData.business_name) {
+        showError('Business name is required');
+        return;
+      }
+      if (!customerData.first_name) {
+        showError('First name is required');
+        return;
+      }
+      if (!customerData.last_name) {
+        showError('Last name is required');
+        return;
+      }
+      if (!customerData.email) {
+        showError('Email is required');
+        return;
+      }
+      if (!customerData.phone) {
+        showError('Phone is required');
+        return;
+      }
+      if (!customerData.address) {
+        showError('Address is required');
+        return;
+      }
+      if (!customerData.city) {
         showError('Please fill in all required fields (marked with *)');
         return;
       }
@@ -1812,7 +1882,11 @@ function loadConfigurations() {
   try {
     if (window.api && typeof window.api.getPatternsConfig === 'function') {
       PATTERNS_CONFIG = window.api.getPatternsConfig();
-      if (!PATTERNS_CONFIG || Object.keys(PATTERNS_CONFIG).length === 0) {
+      if (!PATTERNS_CONFIG) {
+        console.error('[renderer] PATTERNS_CONFIG not loaded');
+        throw new Error('Patterns configuration not loaded');
+      }
+      if (Object.keys(PATTERNS_CONFIG).length === 0) {
         console.error('[renderer] Failed to load patterns config');
         throw new Error('Patterns configuration is required but not available');
       }
@@ -1828,7 +1902,11 @@ function loadConfigurations() {
   try {
     if (window.api && typeof window.api.getValidationConfig === 'function') {
       VALIDATION_CONFIG = window.api.getValidationConfig();
-      if (!VALIDATION_CONFIG || Object.keys(VALIDATION_CONFIG).length === 0) {
+      if (!VALIDATION_CONFIG) {
+        console.error('[renderer] VALIDATION_CONFIG not loaded');
+        throw new Error('Validation configuration not loaded');
+      }
+      if (Object.keys(VALIDATION_CONFIG).length === 0) {
         console.error('[renderer] Failed to load validation config');
         throw new Error('Validation configuration is required but not available');
       }
@@ -1849,7 +1927,11 @@ function loadConfigurations() {
 // Old normalizeSimple function removed - not needed for manual selection
 
 function getQuantityPatterns() {
-  if (!PATTERNS_CONFIG || !PATTERNS_CONFIG.quantity_patterns) {
+  if (!PATTERNS_CONFIG) {
+    console.error('[renderer] PATTERNS_CONFIG not available for parsing');
+    throw new Error('Patterns configuration not available');
+  }
+  if (!PATTERNS_CONFIG.quantity_patterns) {
     console.error('[renderer] Patterns config not available');
     throw new Error('Quantity patterns configuration is required but not available');
   }
@@ -1866,7 +1948,11 @@ function getQuantityPatterns() {
 
 function parseItemQuantity(itemText) {
   if (typeof itemText !== 'string') {
-    if (itemText === null || itemText === undefined) {
+    if (itemText === null) {
+      console.warn('[renderer] Item text is null, skipping');
+      continue;
+    }
+    if (itemText === undefined) {
       console.error('[renderer] parseItemQuantity received null/undefined input');
       throw new Error('parseItemQuantity requires valid string input');
     }
@@ -1964,7 +2050,11 @@ function formatItemText(quantity, name, unit, isImage = false) {
   if (!name) return '';
   
   // Handle image items - don't format, return as-is
-  if (isImage || unit === 'file') {
+  if (isImage) {
+    console.log('[renderer] Skipping image item for order processing');
+    return null;
+  }
+  if (unit === 'file') {
     return name.startsWith('[IMAGE:') ? name : `[IMAGE: ${name}]`;
   }
   
@@ -2373,7 +2463,14 @@ function parseOrderItemsFromMessages() {
 }
 
 function parseAndStandardizeItem(line) {
-  if (!line || typeof line !== 'string') return null;
+  if (!line) {
+    console.warn('[renderer] Line is required for parsing');
+    return null;
+  }
+  if (typeof line !== 'string') {
+    console.warn('[renderer] Line must be a string for parsing');
+    return null;
+  }
   
   const originalLine = line.trim();
   if (!originalLine) return null;
@@ -2644,7 +2741,7 @@ function saveOrderItemEdit(index) {
   // Update the item
   currentOrderItems[index] = {
     ...currentOrderItems[index],
-    quantity: parseFloat(quantityInput.value) || 1, // User input fallback acceptable
+    quantity: parseFloat(quantityInput.value) ? parseFloat(quantityInput.value) : 1,
     unit: unitInput.value.trim(),
     name: nameInput.value.trim()
   };
@@ -2768,14 +2865,22 @@ btnCreateOrder.addEventListener('click', async () => {
   
   // Validate first message has required data
   const firstMessage = selectedMessages[0];
-  if (!firstMessage.sender || !firstMessage.timestamp) {
+  if (!firstMessage.sender) {
+    console.warn('[renderer] First message missing sender');
+    return;
+  }
+  if (!firstMessage.timestamp) {
     alert('Selected messages contain invalid data');
     return;
   }
   
   const combinedText = selectedMessages.map(msg => msg.text).join('\n');
   const selectedOption = customerSelectEl.options[customerSelectEl.selectedIndex];
-  if (!selectedOption || !selectedOption.text) {
+  if (!selectedOption) {
+    console.warn('[renderer] No option selected');
+    return;
+  }
+  if (!selectedOption.text) {
     alert('Please select a valid customer');
     return;
   }
@@ -2966,9 +3071,13 @@ function boot() {
       const dateB = parseTimestamp(b.timestamp);
       
       // Debug logging to see what's happening
-      if (dateA.getTime() === 0 || dateB.getTime() === 0) {
-        console.warn('[renderer] Invalid date comparison:', {
-          a: { timestamp: a.timestamp, parsed: dateA },
+      if (dateA.getTime() === 0) {
+        console.warn('[renderer] Invalid date A in comparison:', {
+          a: { timestamp: a.timestamp, parsed: dateA }
+        });
+      }
+      if (dateB.getTime() === 0) {
+        console.warn('[renderer] Invalid date B in comparison:', {
           b: { timestamp: b.timestamp, parsed: dateB }
         });
       }
@@ -3111,9 +3220,13 @@ if (window.api && typeof window.api.onPayload === 'function') {
         const dateB = parseTimestamp(b.timestamp);
         
         // Debug logging for new messages
-        if (dateA.getTime() === 0 || dateB.getTime() === 0) {
-          console.warn('[renderer] Invalid date comparison in onPayload:', {
-            a: { timestamp: a.timestamp, parsed: dateA },
+        if (dateA.getTime() === 0) {
+          console.warn('[renderer] Invalid date A in onPayload comparison:', {
+            a: { timestamp: a.timestamp, parsed: dateA }
+          });
+        }
+        if (dateB.getTime() === 0) {
+          console.warn('[renderer] Invalid date B in onPayload comparison:', {
             b: { timestamp: b.timestamp, parsed: dateB }
           });
         }
@@ -3150,7 +3263,14 @@ boot();
 
 // Tabs toggle
 function showPanel(which) {
-  if (!panelMessages || !panelDebug) return;
+  if (!panelMessages) {
+    console.warn('[renderer] Messages panel not found');
+    return;
+  }
+  if (!panelDebug) {
+    console.warn('[renderer] Debug panel not found');
+    return;
+  }
   if (which === 'debug') {
     panelMessages.style.display = 'none';
     panelDebug.style.display = '';

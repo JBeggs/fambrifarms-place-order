@@ -25,31 +25,37 @@ function getCompanyAliases() {
 
 function getForwarderNames() {
   try {
-    const raw = process.env.FORWARDER_NAMES || process.env.FORWARDERS;
-    if (!raw) {
+    const raw = process.env.FORWARDER_NAMES;
+    const altRaw = process.env.FORWARDERS;
+    
+    if (!raw && !altRaw) {
       console.warn('[preload] FORWARDER_NAMES or FORWARDERS environment variable not set');
       return [];
     }
-    // raw is already checked above, this line is unreachable
+    
+    const envValue = raw ? raw : altRaw;
     let arr = [];
-    if (raw.trim().startsWith('[')) {
-      arr = JSON.parse(raw);
+    if (envValue.trim().startsWith('[')) {
+      arr = JSON.parse(envValue);
     } else {
-      arr = raw.split(',');
+      arr = envValue.split(',');
     }
     if (!Array.isArray(arr)) {
       console.warn('[preload] Forwarder names is not an array:', arr);
-      return ['karl'];
+      throw new Error('FORWARDER_NAMES must be a valid array or comma-separated string');
     }
     return arr.map(s => {
-      if (s === null || s === undefined) {
+      if (s === null) {
+        return '';
+      }
+      if (s === undefined) {
         return '';
       }
       return String(s).trim().toLowerCase();
     }).filter(Boolean);
   } catch (error) {
     console.error('[preload] Failed to parse forwarder names:', error.message);
-    return ['karl'];
+    throw error;
   }
 }
 

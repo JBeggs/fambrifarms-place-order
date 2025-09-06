@@ -42,13 +42,17 @@ const QUANTITY_PATTERNS = readQuantityPatterns();
 
 function buildQuantityRegex() {
   const patterns = QUANTITY_PATTERNS;
-  if (!patterns || !patterns.weight_units || !patterns.count_units) {
-    console.error(`[messageParser] CRITICAL: quantity_patterns.json missing required fields:`, {
-      hasPatterns: !!patterns,
-      hasWeightUnits: !!(patterns && patterns.weight_units),
-      hasCountUnits: !!(patterns && patterns.count_units)
-    });
-    throw new Error('Invalid quantity patterns configuration - missing required fields');
+  if (!patterns) {
+    console.error(`[messageParser] CRITICAL: quantity_patterns.json is null or undefined`);
+    throw new Error('Invalid quantity patterns configuration - patterns is null');
+  }
+  if (!patterns.weight_units) {
+    console.error(`[messageParser] CRITICAL: quantity_patterns.json missing weight_units`);
+    throw new Error('Invalid quantity patterns configuration - missing weight_units');
+  }
+  if (!patterns.count_units) {
+    console.error(`[messageParser] CRITICAL: quantity_patterns.json missing count_units`);
+    throw new Error('Invalid quantity patterns configuration - missing count_units');
   }
   
   // Build comprehensive pattern from loaded data
@@ -78,7 +82,11 @@ const QUANTITY_REGEX = buildQuantityRegex();
 
 // Build skip patterns regex
 function buildSkipPatternsRegex() {
-  const patterns = QUANTITY_PATTERNS.skip_patterns || [];
+  const patterns = QUANTITY_PATTERNS.skip_patterns;
+  if (!patterns) {
+    console.warn('[messageParser] No skip_patterns defined in quantity_patterns.json');
+    return null;
+  }
   if (patterns.length === 0) return null;
   const combined = patterns.join('|');
   return new RegExp(`(${combined})`, 'i');
@@ -88,7 +96,11 @@ const SKIP_PATTERNS_REGEX = buildSkipPatternsRegex();
 
 // Build command patterns
 function buildCommandPatterns() {
-  const patterns = QUANTITY_PATTERNS.command_patterns || {};
+  const patterns = QUANTITY_PATTERNS.command_patterns;
+  if (!patterns) {
+    console.warn('[messageParser] No command_patterns defined in quantity_patterns.json');
+    return {};
+  }
   const compiled = {};
   for (const [key, pattern] of Object.entries(patterns)) {
     compiled[key] = new RegExp(pattern, 'i');

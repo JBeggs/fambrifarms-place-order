@@ -55,8 +55,12 @@ export async function startReader(env, onBatch) {
 
   async function downloadImage(imageUrl, filename) {
     return new Promise((resolve, reject) => {
-      if (!imageUrl || !imageUrl.startsWith('http')) {
-        reject(new Error('Invalid image URL'));
+      if (!imageUrl) {
+        reject(new Error('Image URL is required'));
+        return;
+      }
+      if (!imageUrl.startsWith('http')) {
+        reject(new Error('Image URL must be HTTP/HTTPS'));
         return;
       }
 
@@ -106,8 +110,8 @@ export async function startReader(env, onBatch) {
           const img = arguments[0];
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          canvas.width = img.naturalWidth || img.width || 300;
-          canvas.height = img.naturalHeight || img.height || 300;
+          canvas.width = img.naturalWidth ? img.naturalWidth : (img.width ? img.width : 300);
+          canvas.height = img.naturalHeight ? img.naturalHeight : (img.height ? img.height : 300);
           
           return new Promise((resolve) => {
             img.onload = () => {
@@ -191,7 +195,15 @@ export async function startReader(env, onBatch) {
     }
     for (const title of titles) {
       const t = title.toLowerCase();
-      if (t === want || t.includes(want) || want.includes(t)) {
+      if (t === want) {
+        console.log('[reader] opening exact matched chat', { title });
+        const ok = await clickChatByTitle(title);
+        if (ok) return;
+      } else if (t.includes(want)) {
+        console.log('[reader] opening chat containing wanted text', { title });
+        const ok = await clickChatByTitle(title);
+        if (ok) return;
+      } else if (want.includes(t)) {
         console.log('[reader] opening matched chat', { title });
         const ok = await clickChatByTitle(title);
         if (ok) return;
@@ -223,7 +235,11 @@ export async function startReader(env, onBatch) {
       }
       if (!title) continue;
       const t = title.toLowerCase();
-      if (t.includes(want) || want.includes(t)) {
+      if (t.includes(want)) {
+        console.log('[reader] opening chat containing wanted text (final)', { title });
+        const ok = await clickChatByTitle(title);
+        if (ok) return;
+      } else if (want.includes(t)) {
         console.log('[reader] opening matched chat (final)', { title });
         const ok = await clickChatByTitle(title);
         if (ok) return;
@@ -238,7 +254,12 @@ export async function startReader(env, onBatch) {
       const headerSpans = await driver.findElements(By.css('header [title]'));
       for (const span of headerSpans) {
         const t = await span.getAttribute('title');
-        if (t && (t.includes('+') || t.includes(','))) {
+        if (t && t.includes('+')) {
+          const parts = t.split(', ').map(s => s.trim());
+          const names = parts.filter(p => !p.startsWith('+') && p !== 'You');
+          const numbers = parts.filter(p => p.startsWith('+'));
+          return { names, numbers };
+        } else if (t && t.includes(',')) {
           const parts = t.split(', ').map(s => s.trim());
           const names = parts.filter(p => !p.startsWith('+') && p !== 'You');
           const numbers = parts.filter(p => p.startsWith('+'));
@@ -261,7 +282,14 @@ export async function startReader(env, onBatch) {
         const pre = await el.getAttribute('data-pre-plain-text');
         const textContent = await el.getText();
         const text = textContent ? textContent.trim() : '';
-        if (!pre || !text) continue;
+        if (!pre) {
+          console.warn('[reader] Message missing pre-plain-text attribute, skipping');
+          continue;
+        }
+        if (!text) {
+          console.warn('[reader] Message has no text content, skipping');
+          continue;
+        }
         const m = pre.match(/\[([^\]]+)\]/);
         const ts = m ? m[1] : null;
         if (!ts) continue;
@@ -351,7 +379,7 @@ export async function startReader(env, onBatch) {
         sender = 'Image'; // Default for now - could be enhanced to detect actual sender
       } else {
         const sm = m.pre.match(/\] ([^:]+):/); 
-        if (sm) sender = (sm[1] || '').trim();
+        if (sm) sender = sm[1] ? sm[1].trim() : '';
       }
       
       let company = sender;

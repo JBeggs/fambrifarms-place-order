@@ -128,13 +128,15 @@ app.whenReady().then(async () => {
   ipcMain.on('read-aliases-sync', (event) => {
     try {
       const baseDir = __dirname;
-      const fromEnv = process.env.COMPANY_ALIASES_FILE || process.env.ALIAS_FILE;
-      if (!fromEnv) {
+      const fromEnv = process.env.COMPANY_ALIASES_FILE;
+      const altEnv = process.env.ALIAS_FILE;
+      
+      if (!fromEnv && !altEnv) {
         throw new Error('COMPANY_ALIASES_FILE or ALIAS_FILE environment variable required');
       }
-      const filePath = fromEnv
-        ? (path.isAbsolute(fromEnv) ? fromEnv : path.join(baseDir, fromEnv))
-        : path.join(baseDir, 'company_aliases.json');
+      
+      const envValue = fromEnv ? fromEnv : altEnv;
+      const filePath = path.isAbsolute(envValue) ? envValue : path.join(baseDir, envValue);
       const raw = fs.readFileSync(filePath, 'utf-8');
       const obj = JSON.parse(raw);
       event.returnValue = (obj && typeof obj === 'object') ? obj : {};
