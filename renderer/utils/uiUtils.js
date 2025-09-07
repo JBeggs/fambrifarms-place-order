@@ -9,6 +9,7 @@ let selectedMessageIds = new Set();
 let processedMessageIds = new Set();
 let rawMessages = [];
 let currentOrderItems = [];
+let itemsManuallyModified = false; // Flag to prevent re-parsing when items are manually changed
 
 // DOM element references (will be set by main renderer)
 let domElements = {};
@@ -99,6 +100,9 @@ function toggleMessageSelection(messageId) {
     }
   }
   
+  // Reset manual modification flag when message selection changes
+  itemsManuallyModified = false;
+  
   renderMessagesList();
   renderSelectedMessages();
   renderOrderPreview();
@@ -141,8 +145,12 @@ function renderOrderPreview() {
     return;
   }
   
-  // Always re-parse items from selected messages to ensure we get all items
-  parseOrderItemsFromMessages();
+  // Only re-parse items if they haven't been manually modified
+  if (!itemsManuallyModified) {
+    parseOrderItemsFromMessages();
+  } else {
+    console.log('[uiUtils] Skipping re-parse because items were manually modified');
+  }
   
   if (currentOrderItems.length === 0) {
     orderPreviewEl.innerHTML = '<div style="padding: 8px; color: #999;">No order items found in selected messages</div>';
@@ -573,7 +581,9 @@ function saveOrderItemEdit(index) {
   };
   
   currentOrderItems[index] = updatedItem;
+  itemsManuallyModified = true; // Mark items as manually modified
   console.log('[uiUtils] Updated item:', updatedItem);
+  console.log('[uiUtils] Marked items as manually modified');
   
   // Re-render to show updated item
   console.log('[uiUtils] Re-rendering order preview...');
@@ -616,7 +626,9 @@ function removeOrderItem(index) {
     console.log('[uiUtils] Proceeding with removal');
     try {
       currentOrderItems.splice(index, 1);
+      itemsManuallyModified = true; // Mark items as manually modified
       console.log('[uiUtils] Item removed, new count:', currentOrderItems.length);
+      console.log('[uiUtils] Marked items as manually modified');
       renderOrderPreview();
       console.log('[uiUtils] Order preview re-rendered');
     } catch (error) {
@@ -636,6 +648,7 @@ function addNewOrderItem() {
   };
   
   currentOrderItems.push(newItem);
+  itemsManuallyModified = true; // Mark items as manually modified
   renderOrderPreview();
   
   // Immediately edit the new item
