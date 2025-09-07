@@ -225,9 +225,37 @@ function renderOrderPreview() {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'btn-remove';
     removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', () => {
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.style.pointerEvents = 'auto';
+    
+    // Add multiple event listeners to debug
+    removeBtn.addEventListener('mousedown', () => {
+      console.log('[uiUtils] Remove button mousedown for index:', index);
+    });
+    
+    removeBtn.addEventListener('mouseup', () => {
+      console.log('[uiUtils] Remove button mouseup for index:', index);
+    });
+    
+    removeBtn.addEventListener('click', (event) => {
+      console.log('[uiUtils] ===== REMOVE BUTTON CLICKED =====');
       console.log('[uiUtils] Remove button clicked for index:', index);
-      removeOrderItem(index);
+      console.log('[uiUtils] Click event:', event);
+      console.log('[uiUtils] Button element:', removeBtn);
+      console.log('[uiUtils] Current order items before removal:', currentOrderItems.length);
+      console.log('[uiUtils] currentOrderItems array:', currentOrderItems);
+      
+      // Prevent any default behavior
+      event.preventDefault();
+      event.stopPropagation();
+      
+      try {
+        removeOrderItem(index);
+      } catch (error) {
+        console.error('[uiUtils] Error in remove button click handler:', error);
+      }
+      
+      console.log('[uiUtils] ===== REMOVE BUTTON CLICK END =====');
     });
     
     actionsDiv.appendChild(editBtn);
@@ -572,12 +600,28 @@ function removeOrderItem(index) {
   console.log('[uiUtils] Current items count:', currentOrderItems.length);
   console.log('[uiUtils] Item to remove:', currentOrderItems[index]);
   
-  if (confirm('Remove this item from the order?')) {
-    console.log('[uiUtils] User confirmed removal');
-    currentOrderItems.splice(index, 1);
-    console.log('[uiUtils] Item removed, new count:', currentOrderItems.length);
-    renderOrderPreview();
-    console.log('[uiUtils] Order preview re-rendered');
+  // Try to use confirm dialog, but provide fallback
+  let shouldRemove = false;
+  try {
+    shouldRemove = confirm('Remove this item from the order?');
+    console.log('[uiUtils] Confirm dialog result:', shouldRemove);
+  } catch (error) {
+    console.error('[uiUtils] Confirm dialog failed:', error);
+    // Fallback: just remove without confirmation
+    shouldRemove = true;
+    console.log('[uiUtils] Using fallback removal (no confirmation)');
+  }
+  
+  if (shouldRemove) {
+    console.log('[uiUtils] Proceeding with removal');
+    try {
+      currentOrderItems.splice(index, 1);
+      console.log('[uiUtils] Item removed, new count:', currentOrderItems.length);
+      renderOrderPreview();
+      console.log('[uiUtils] Order preview re-rendered');
+    } catch (error) {
+      console.error('[uiUtils] Error during removal:', error);
+    }
   } else {
     console.log('[uiUtils] User cancelled removal');
   }
