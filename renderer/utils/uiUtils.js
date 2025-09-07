@@ -220,12 +220,12 @@ function renderOrderPreview() {
     const editBtn = document.createElement('button');
     editBtn.className = 'btn-edit';
     editBtn.textContent = 'Edit';
-    editBtn.onclick = () => editOrderItem(index);
+    editBtn.addEventListener('click', () => editOrderItem(index));
     
     const removeBtn = document.createElement('button');
     removeBtn.className = 'btn-remove';
     removeBtn.textContent = 'Remove';
-    removeBtn.onclick = () => removeOrderItem(index);
+    removeBtn.addEventListener('click', () => removeOrderItem(index));
     
     actionsDiv.appendChild(editBtn);
     actionsDiv.appendChild(removeBtn);
@@ -237,7 +237,7 @@ function renderOrderPreview() {
       addProductBtn.textContent = 'Add Product';
       addProductBtn.style.background = '#4caf50';
       addProductBtn.style.color = 'white';
-      addProductBtn.onclick = async () => {
+      addProductBtn.addEventListener('click', async () => {
         const newProduct = await showNewProductDialog(item.name, item.unit);
         if (newProduct) {
           // Update the item with the new product info
@@ -250,7 +250,7 @@ function renderOrderPreview() {
             renderOrderPreview(); // Re-render to show updated validation
           }, 100);
         }
-      };
+      });
       actionsDiv.appendChild(addProductBtn);
     } else if (inventoryStatus.status === 'no_inventory') {
       const addStockBtn = document.createElement('button');
@@ -258,10 +258,10 @@ function renderOrderPreview() {
       addStockBtn.textContent = 'Add Stock Item';
       addStockBtn.style.background = '#9c27b0';
       addStockBtn.style.color = 'white';
-      addStockBtn.onclick = async () => {
+      addStockBtn.addEventListener('click', async () => {
         await showInventoryDialog(existingProduct, item.quantity);
         renderOrderPreview(); // Re-render to show updated status
-      };
+      });
       actionsDiv.appendChild(addStockBtn);
     } else if (inventoryStatus.status === 'needs_production') {
       const procureBtn = document.createElement('button');
@@ -269,10 +269,10 @@ function renderOrderPreview() {
       procureBtn.textContent = 'Schedule Production';
       procureBtn.style.background = '#ff9800';
       procureBtn.style.color = 'white';
-      procureBtn.onclick = async () => {
+      procureBtn.addEventListener('click', async () => {
         await showProcurementDialog(existingProduct, item.quantity, inventoryStatus.status);
         renderOrderPreview(); // Re-render to show updated status
-      };
+      });
       actionsDiv.appendChild(procureBtn);
     } else if (inventoryStatus.status === 'out_of_stock') {
       // Show both "Add Stock" and "Order Stock" buttons for out of stock items
@@ -282,10 +282,10 @@ function renderOrderPreview() {
       addStockBtn.style.background = '#9c27b0';
       addStockBtn.style.color = 'white';
       addStockBtn.style.marginRight = '8px';
-      addStockBtn.onclick = async () => {
+      addStockBtn.addEventListener('click', async () => {
         await showAddStockDialog(existingProduct, item.quantity);
         renderOrderPreview(); // Re-render to show updated status
-      };
+      });
       actionsDiv.appendChild(addStockBtn);
       
       const orderStockBtn = document.createElement('button');
@@ -293,10 +293,10 @@ function renderOrderPreview() {
       orderStockBtn.textContent = 'Order Stock';
       orderStockBtn.style.background = '#ff9800';
       orderStockBtn.style.color = 'white';
-      orderStockBtn.onclick = async () => {
+      orderStockBtn.addEventListener('click', async () => {
         await showProcurementDialog(existingProduct, item.quantity, 'out_of_stock');
         renderOrderPreview(); // Re-render to show updated status
-      };
+      });
       actionsDiv.appendChild(orderStockBtn);
     }
     
@@ -413,8 +413,8 @@ function renderOrderPreview() {
       }
     });
     
-    saveBtn.onclick = () => saveOrderItemEdit(index);
-    cancelBtn.onclick = () => cancelOrderItemEdit(index);
+    saveBtn.addEventListener('click', () => saveOrderItemEdit(index));
+    cancelBtn.addEventListener('click', () => cancelOrderItemEdit(index));
     
     editForm.style.display = 'none';
     
@@ -426,7 +426,13 @@ function renderOrderPreview() {
   const addItemDiv = document.createElement('div');
   addItemDiv.style.padding = '8px';
   addItemDiv.style.textAlign = 'center';
-  addItemDiv.innerHTML = '<button class="btn-edit" onclick="addNewOrderItem()">+ Add Item</button>';
+  
+  const addItemBtn = document.createElement('button');
+  addItemBtn.className = 'btn-edit';
+  addItemBtn.textContent = '+ Add Item';
+  addItemBtn.addEventListener('click', addNewOrderItem);
+  
+  addItemDiv.appendChild(addItemBtn);
   orderPreviewEl.appendChild(addItemDiv);
 }
 
@@ -1579,12 +1585,7 @@ async function showNewCustomerDialog() {
   });
 }
 
-// Make functions available globally for onclick handlers
-window.editOrderItem = editOrderItem;
-window.saveOrderItemEdit = saveOrderItemEdit;
-window.cancelOrderItemEdit = cancelOrderItemEdit;
-window.removeOrderItem = removeOrderItem;
-window.addNewOrderItem = addNewOrderItem;
+// Functions are now used with proper event listeners, no need for global exposure
 
 export {
   setDomElements,
