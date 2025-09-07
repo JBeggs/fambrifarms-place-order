@@ -160,6 +160,24 @@ function isLikelyOrderItem(text) {
     return false;
   }
   
+  // Check for "please add [item]" pattern - this is a legitimate order
+  const pleaseAddPattern = /^please\s+add\s+(.+)$/i;
+  const pleaseAddMatch = trimmed.match(pleaseAddPattern);
+  if (pleaseAddMatch) {
+    const itemPart = pleaseAddMatch[1];
+    // If the item part has quantity or product words, it's likely an order
+    if (QUANTITY_REGEX.test(itemPart)) {
+      return true;
+    }
+    const productWords = QUANTITY_PATTERNS.specific_items || [];
+    const hasProductWord = productWords.some(product => 
+      itemPart.toLowerCase().includes(product.toLowerCase())
+    );
+    if (hasProductWord) {
+      return true;
+    }
+  }
+  
   // If it has quantity patterns, it's likely an order item
   if (QUANTITY_REGEX.test(text)) {
     return true;
