@@ -433,32 +433,18 @@ function renderOrderPreview() {
 }
 
 function editOrderItem(index) {
-  console.log('[editOrderItem] Editing item at index:', index);
-  console.log('[editOrderItem] DOM elements:', domElements);
-  
   const { orderPreviewEl } = domElements;
-  console.log('[editOrderItem] Order preview element:', orderPreviewEl);
-  
   const itemDiv = orderPreviewEl.querySelector(`[data-item-index="${index}"]`);
-  console.log('[editOrderItem] Found item div:', itemDiv);
-  
-  if (!itemDiv) {
-    console.error('[editOrderItem] Could not find item div for index:', index);
-    return;
-  }
+  if (!itemDiv) return;
   
   const editForm = itemDiv.querySelector('.item-edit-form');
   const content = itemDiv.querySelector('.preview-item-content');
   const actions = itemDiv.querySelector('.preview-item-actions');
   
-  console.log('[editOrderItem] Found elements - editForm:', editForm, 'content:', content, 'actions:', actions);
-  
   // Show edit form, hide content and actions
   editForm.style.display = 'block';
   content.style.display = 'none';
   actions.style.display = 'none';
-  
-  console.log('[editOrderItem] Edit mode activated');
 }
 
 function saveOrderItemEdit(index) {
@@ -506,10 +492,6 @@ function removeOrderItem(index) {
 }
 
 function addNewOrderItem() {
-  console.log('[addNewOrderItem] Starting to add new item');
-  console.log('[addNewOrderItem] Current items count:', currentOrderItems.length);
-  console.log('[addNewOrderItem] DOM elements:', domElements);
-  
   const newItem = {
     quantity: 1,
     unit: '',
@@ -518,14 +500,10 @@ function addNewOrderItem() {
   };
   
   currentOrderItems.push(newItem);
-  console.log('[addNewOrderItem] Added item, new count:', currentOrderItems.length);
-  
   renderOrderPreview();
-  console.log('[addNewOrderItem] Rendered preview');
   
   // Immediately edit the new item
   setTimeout(() => {
-    console.log('[addNewOrderItem] About to edit item at index:', currentOrderItems.length - 1);
     editOrderItem(currentOrderItems.length - 1);
   }, 100);
 }
