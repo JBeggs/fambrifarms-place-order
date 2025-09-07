@@ -225,7 +225,10 @@ function renderOrderPreview() {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'btn-remove';
     removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', () => removeOrderItem(index));
+    removeBtn.addEventListener('click', () => {
+      console.log('[uiUtils] Remove button clicked for index:', index);
+      removeOrderItem(index);
+    });
     
     actionsDiv.appendChild(editBtn);
     actionsDiv.appendChild(removeBtn);
@@ -532,9 +535,18 @@ function cancelOrderItemEdit(index) {
 }
 
 function removeOrderItem(index) {
+  console.log('[uiUtils] removeOrderItem called with index:', index);
+  console.log('[uiUtils] Current items count:', currentOrderItems.length);
+  console.log('[uiUtils] Item to remove:', currentOrderItems[index]);
+  
   if (confirm('Remove this item from the order?')) {
+    console.log('[uiUtils] User confirmed removal');
     currentOrderItems.splice(index, 1);
+    console.log('[uiUtils] Item removed, new count:', currentOrderItems.length);
     renderOrderPreview();
+    console.log('[uiUtils] Order preview re-rendered');
+  } else {
+    console.log('[uiUtils] User cancelled removal');
   }
 }
 
