@@ -25,16 +25,51 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
   try {
     console.log('[sender] Sending WhatsApp message to:', phoneNumber);
     
-    // If phone number is provided, search for the contact
+    // If phone number is provided, search for the contact and start conversation
     if (phoneNumber) {
-      await searchAndSelectContact(phoneNumber);
+      const contactFound = await searchAndSelectContact(phoneNumber);
+      if (!contactFound) {
+        // If contact not found, try to start a new conversation
+        await startNewConversation(phoneNumber);
+      }
     }
     
-    // Find the message input box
-    const messageBox = await readerDriver.wait(
-      until.elementLocated(By.css('[data-testid="conversation-compose-box-input"]')),
-      10000
-    );
+    // Wait for the conversation to be active and find the message input box
+    let messageBox;
+    try {
+      // Try the main compose box first
+      messageBox = await readerDriver.wait(
+        until.elementLocated(By.css('[data-testid="conversation-compose-box-input"]')),
+        5000
+      );
+    } catch (e) {
+      console.log('[sender] Main compose box not found, trying alternative selectors...');
+      
+      // Try alternative selectors for the message input
+      const selectors = [
+        'div[contenteditable="true"][data-tab="10"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        '[data-testid="compose-box-input"]'
+      ];
+      
+      for (const selector of selectors) {
+        try {
+          messageBox = await readerDriver.wait(
+            until.elementLocated(By.css(selector)),
+            3000
+          );
+          console.log(`[sender] Found message box with selector: ${selector}`);
+          break;
+        } catch (selectorError) {
+          continue;
+        }
+      }
+      
+      if (!messageBox) {
+        throw new Error('Could not find message input box. Make sure you are in a WhatsApp conversation.');
+      }
+    }
     
     // Clear any existing text
     await messageBox.clear();
@@ -83,15 +118,88 @@ async function searchAndSelectContact(phoneNumber) {
       );
       await contactElement.click();
       console.log('[sender] Contact selected successfully');
+      
+      // Wait for conversation to load
+      await readerDriver.sleep(1000);
+      return true;
+      
     } catch (contactError) {
-      console.warn('[sender] Could not find contact, will send to current chat');
+      console.warn('[sender] Could not find existing contact');
       // Clear search box if contact not found
       await searchBox.clear();
+      return false;
     }
     
   } catch (error) {
     console.error('[sender] Error searching for contact:', error);
-    // Continue anyway - might be able to send to current chat
+    return false;
+  }
+}
+
+async function startNewConversation(phoneNumber) {
+  try {
+    console.log('[sender] Starting new conversation with:', phoneNumber);
+    
+    // Try to find the "New chat" button
+    const newChatSelectors = [
+      '[data-testid="new-chat-btn"]',
+      '[title="New chat"]',
+      'div[role="button"][title="New chat"]'
+    ];
+    
+    let newChatBtn = null;
+    for (const selector of newChatSelectors) {
+      try {
+        newChatBtn = await readerDriver.wait(
+          until.elementLocated(By.css(selector)),
+          3000
+        );
+        break;
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (newChatBtn) {
+      await newChatBtn.click();
+      console.log('[sender] Clicked new chat button');
+      
+      // Wait for new chat dialog and search for the phone number
+      await readerDriver.sleep(1000);
+      
+      const searchInput = await readerDriver.wait(
+        until.elementLocated(By.css('input[type="text"]')),
+        5000
+      );
+      
+      await searchInput.sendKeys(phoneNumber);
+      await readerDriver.sleep(2000);
+      
+      // Try to click on the contact or create new contact
+      try {
+        const contactResult = await readerDriver.wait(
+          until.elementLocated(By.css('[data-testid="cell-frame-container"]')),
+          5000
+        );
+        await contactResult.click();
+        console.log('[sender] New conversation started');
+        
+        // Wait for conversation to load
+        await readerDriver.sleep(1000);
+        return true;
+        
+      } catch (e) {
+        console.warn('[sender] Could not start new conversation');
+        return false;
+      }
+    } else {
+      console.warn('[sender] Could not find new chat button');
+      return false;
+    }
+    
+  } catch (error) {
+    console.error('[sender] Error starting new conversation:', error);
+    return false;
   }
 }
 
