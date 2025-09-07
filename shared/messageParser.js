@@ -94,6 +94,112 @@ function buildSkipPatternsRegex() {
 
 const SKIP_PATTERNS_REGEX = buildSkipPatternsRegex();
 
+// Additional filtering for individual message parts
+function isLikelyOrderItem(text) {
+  if (!text || text.trim().length === 0) return false;
+  
+  const trimmed = text.trim().toLowerCase();
+  
+  // Skip if it matches skip patterns
+  if (SKIP_PATTERNS_REGEX && SKIP_PATTERNS_REGEX.test(trimmed)) {
+    return false;
+  }
+  
+  // Skip very short text (likely not product names)
+  if (trimmed.length < 3) return false;
+  
+  // Skip if it's just numbers or punctuation
+  if (/^[\d\s\-\+\(\)\.\,]+$/.test(trimmed)) return false;
+  
+  // Skip if it's just a single word that's likely a greeting or response
+  const singleWordSkips = [
+    'hi', 'hello', 'hey', 'thanks', 'thank', 'please', 'yes', 'no', 'ok', 'okay',
+    'sure', 'great', 'good', 'perfect', 'excellent', 'awesome', 'wonderful',
+    'received', 'confirmed', 'confirm', 'delivery', 'urgent', 'asap', 'rush',
+    'morning', 'afternoon', 'evening', 'today', 'tomorrow', 'yesterday',
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
+  ];
+  
+  const words = trimmed.split(/\s+/);
+  if (words.length === 1 && singleWordSkips.includes(words[0])) {
+    return false;
+  }
+  
+  // Skip if it looks like a phone number
+  if (/^[\+\d\s\-\(\)]+$/.test(trimmed) && trimmed.length > 5) {
+    return false;
+  }
+  
+  // Skip if it looks like an email
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return false;
+  }
+  
+  // Skip if it looks like a URL
+  if (/^(https?:\/\/|www\.|ftp:\/\/)/.test(trimmed)) {
+    return false;
+  }
+  
+  // Skip if it's just punctuation or special characters
+  if (/^[^\w\s]*$/.test(trimmed)) {
+    return false;
+  }
+  
+  // Skip if it's a common time format
+  if (/^\d{1,2}:\d{2}(\s*(am|pm))?$/i.test(trimmed)) {
+    return false;
+  }
+  
+  // Skip if it's a date format
+  if (/^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/.test(trimmed)) {
+    return false;
+  }
+  
+  // Must have at least one letter (to avoid pure numbers)
+  if (!/[a-zA-Z]/.test(trimmed)) {
+    return false;
+  }
+  
+  // If it has quantity patterns, it's likely an order item
+  if (QUANTITY_REGEX.test(text)) {
+    return true;
+  }
+  
+  // If it contains known product words, it might be an order item
+  const productWords = QUANTITY_PATTERNS.specific_items || [];
+  const hasProductWord = productWords.some(product => 
+    trimmed.includes(product.toLowerCase())
+  );
+  
+  if (hasProductWord) {
+    return true;
+  }
+  
+  // If it's a reasonable length and has mixed content, it might be an order item
+  if (trimmed.length >= 4 && trimmed.length <= 50 && /[a-zA-Z]/.test(trimmed)) {
+    // But skip if it starts with common non-product phrases
+    const nonProductStarts = [
+      'can you', 'could you', 'would you', 'please let', 'let me know',
+      'when will', 'what time', 'how much', 'how many', 'is it possible',
+      'do you have', 'are you', 'i need', 'i want', 'i would like',
+      'we need', 'we want', 'we would like', 'delivery to', 'address is',
+      'phone number', 'contact number', 'total amount', 'grand total'
+    ];
+    
+    const startsWithNonProduct = nonProductStarts.some(phrase => 
+      trimmed.startsWith(phrase)
+    );
+    
+    if (startsWithNonProduct) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  return false;
+}
+
 // Build command patterns
 function buildCommandPatterns() {
   const patterns = QUANTITY_PATTERNS.command_patterns;
@@ -273,14 +379,17 @@ export function processLines(lines) {
           
           for (const part of currentParts) {
             const hasQuantity = QUANTITY_REGEX.test(part);
-            if (hasQuantity) {
+            if (hasQuantity && isLikelyOrderItem(part)) {
+              order.items_text.push(part);
+            } else if (isLikelyOrderItem(part)) {
+              // Even without quantity, if it looks like an order item, include it
               order.items_text.push(part);
             } else {
               // Skip company names, sender names, and phone numbers in instructions
               const partCompany = toCanonical(part);
               const isSenderName = part === currentMsg.sender;
               const isPhoneNumber = /^[\+\d\s\-\(\)]+$/.test(part.trim()) && part.trim().length > 5;
-              if (!partCompany && !isSenderName && !isPhoneNumber) {
+              if (!partCompany && !isSenderName && !isPhoneNumber && isLikelyOrderItem(part)) {
                 order.instructions.push(part);
               }
             }
@@ -325,14 +434,17 @@ export function processLines(lines) {
             
             for (const part of parts) {
               const hasQuantity = QUANTITY_REGEX.test(part);
-              if (hasQuantity) {
+              if (hasQuantity && isLikelyOrderItem(part)) {
+                order.items_text.push(part);
+              } else if (isLikelyOrderItem(part)) {
+                // Even without quantity, if it looks like an order item, include it
                 order.items_text.push(part);
               } else {
                 // Skip company names, sender names, and phone numbers in instructions
                 const partCompany = toCanonical(part);
                 const isSenderName = part === prevMsg.sender;
                 const isPhoneNumber = /^[\+\d\s\-\(\)]+$/.test(part.trim()) && part.trim().length > 5;
-                if (!partCompany && !isSenderName && !isPhoneNumber) {
+                if (!partCompany && !isSenderName && !isPhoneNumber && isLikelyOrderItem(part)) {
                   order.instructions.push(part);
                 }
               }
@@ -357,7 +469,7 @@ export function processLines(lines) {
         // Find the most recent order for this company and add the item
         for (let j = orders.length - 1; j >= 0; j--) {
           if (orders[j].company_name === companyName) {
-            if (!orders[j].items_text.includes(item)) {
+            if (!orders[j].items_text.includes(item) && isLikelyOrderItem(item)) {
               orders[j].items_text.push(item);
             }
             break;
@@ -405,7 +517,7 @@ export function processLines(lines) {
           
           // Add items to the order
           for (const itemLine of itemLines) {
-            if (!targetOrder.items_text.includes(itemLine)) {
+            if (!targetOrder.items_text.includes(itemLine) && isLikelyOrderItem(itemLine)) {
               targetOrder.items_text.push(itemLine);
             }
           }
@@ -440,14 +552,17 @@ export function processLines(lines) {
         if (toCanonical(part) === companyInMessage) continue; // Skip company name itself
         
         const hasQuantity = QUANTITY_REGEX.test(part);
-        if (hasQuantity) {
+        if (hasQuantity && isLikelyOrderItem(part)) {
+          order.items_text.push(part);
+        } else if (isLikelyOrderItem(part)) {
+          // Even without quantity, if it looks like an order item, include it
           order.items_text.push(part);
         } else {
           // Skip company names, sender names, and phone numbers in instructions
           const partCompany = toCanonical(part);
           const isSenderName = part === msg.sender;
           const isPhoneNumber = /^[\+\d\s\-\(\)]+$/.test(part.trim()) && part.trim().length > 5;
-          if (!partCompany && !isSenderName && !isPhoneNumber) {
+          if (!partCompany && !isSenderName && !isPhoneNumber && isLikelyOrderItem(part)) {
             order.instructions.push(part);
           }
         }
