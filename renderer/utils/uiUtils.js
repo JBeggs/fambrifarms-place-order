@@ -355,12 +355,37 @@ function renderOrderPreview() {
         return;
       }
       
-      // Get products from dataLoaders
+      console.log('[uiUtils] Searching products for query:', query);
+      
+      // Get products from global window object
       const products = window.products || [];
+      console.log('[uiUtils] Available products count:', products.length);
+      
+      if (products.length === 0) {
+        searchResultsDiv.innerHTML = '<div style="padding: 6px; color: #ff6b6b; font-style: italic; font-size: 11px;">Products not loaded yet. Please wait...</div>';
+        searchResultsDiv.style.display = 'block';
+        
+        // Try to reload products if they're not available
+        import('./dataLoaders.js').then(({ loadProducts }) => {
+          console.log('[uiUtils] Attempting to reload products...');
+          loadProducts().then(() => {
+            console.log('[uiUtils] Products reloaded, retrying search...');
+            // Retry the search after a short delay
+            setTimeout(() => searchEditProducts(query), 500);
+          }).catch(err => {
+            console.error('[uiUtils] Failed to reload products:', err);
+            searchResultsDiv.innerHTML = '<div style="padding: 6px; color: #ff6b6b; font-style: italic; font-size: 11px;">Failed to load products. Please refresh the app.</div>';
+          });
+        });
+        return;
+      }
+      
       const matches = products.filter(p => 
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.name && p.name.toLowerCase().includes(query.toLowerCase()) ||
         (p.common_names && p.common_names.some(name => name.toLowerCase().includes(query.toLowerCase())))
       ).slice(0, 8); // Limit to 8 results for inline editor
+      
+      console.log('[uiUtils] Found product matches:', matches.length);
       
       if (matches.length === 0) {
         searchResultsDiv.innerHTML = '<div style="padding: 6px; color: #666; font-style: italic; font-size: 11px;">No products found</div>';
@@ -368,14 +393,28 @@ function renderOrderPreview() {
         return;
       }
       
-      searchResultsDiv.innerHTML = matches.map(product => `
-        <div class="edit-search-result" data-product-id="${product.id}" style="
+      searchResultsDiv.innerHTML = matches.map(product => {
+        const productDiv = document.createElement('div');
+        productDiv.className = 'edit-search-result';
+        productDiv.dataset.productId = product.id;
+        productDiv.style.cssText = `
           padding: 6px; border: 1px solid #ddd; margin-bottom: 2px; border-radius: 3px; 
           cursor: pointer; background: white; font-size: 11px;
-        " onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
-          <strong>${product.name}</strong> - ${product.unit} - R${product.price}
-        </div>
-      `).join('');
+        `;
+        productDiv.innerHTML = `<strong>${product.name}</strong> - ${product.unit || 'N/A'} - R${product.price || '0.00'}`;
+        
+        // Add hover effects
+        productDiv.addEventListener('mouseenter', () => {
+          productDiv.style.background = '#f0f0f0';
+        });
+        productDiv.addEventListener('mouseleave', () => {
+          if (!productDiv.classList.contains('selected')) {
+            productDiv.style.background = 'white';
+          }
+        });
+        
+        return productDiv.outerHTML;
+      }).join('');
       searchResultsDiv.style.display = 'block';
       
       // Add click handlers to search results
@@ -384,13 +423,17 @@ function renderOrderPreview() {
           const productId = parseInt(resultEl.dataset.productId);
           selectedEditProduct = products.find(p => p.id === productId);
           
+          console.log('[uiUtils] Selected product:', selectedEditProduct);
+          
           // Highlight selected result
           searchResultsDiv.querySelectorAll('.edit-search-result').forEach(el => {
             el.style.background = 'white';
             el.style.border = '1px solid #ddd';
+            el.classList.remove('selected');
           });
           resultEl.style.background = '#e3f2fd';
           resultEl.style.border = '2px solid #2196f3';
+          resultEl.classList.add('selected');
           
           useProductBtn.disabled = false;
           useProductBtn.style.background = '#2196f3';
