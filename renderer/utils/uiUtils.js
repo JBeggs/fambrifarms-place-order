@@ -450,12 +450,30 @@ function renderOrderPreview() {
     
     useProductBtn.addEventListener('click', () => {
       if (selectedEditProduct) {
-        nameInput.value = selectedEditProduct.name;
-        unitSelect.value = selectedEditProduct.unit;
+        console.log('[uiUtils] Using selected product:', selectedEditProduct);
+        console.log('[uiUtils] Product name:', selectedEditProduct.name);
+        console.log('[uiUtils] Product unit:', selectedEditProduct.unit);
+        console.log('[uiUtils] Current name input value:', nameInput.value);
+        console.log('[uiUtils] Current unit select value:', unitSelect.value);
+        
+        // Update form fields
+        nameInput.value = selectedEditProduct.name || '';
+        unitSelect.value = selectedEditProduct.unit || '';
+        
+        console.log('[uiUtils] Updated name input value:', nameInput.value);
+        console.log('[uiUtils] Updated unit select value:', unitSelect.value);
+        
+        // Hide search results
         searchResultsDiv.style.display = 'none';
         productSearchInput.value = '';
         useProductBtn.disabled = true;
         useProductBtn.style.background = '#ccc';
+        
+        // Auto-save the changes so user doesn't have to click Save
+        console.log('[uiUtils] Auto-saving product changes...');
+        saveOrderItemEdit(index);
+      } else {
+        console.warn('[uiUtils] No product selected when Use Product clicked');
       }
     });
     
@@ -498,24 +516,39 @@ function editOrderItem(index) {
 }
 
 function saveOrderItemEdit(index) {
+  console.log('[uiUtils] saveOrderItemEdit called for index:', index);
+  
   const { orderPreviewEl } = domElements;
   const itemDiv = orderPreviewEl.querySelector(`[data-item-index="${index}"]`);
-  if (!itemDiv) return;
+  if (!itemDiv) {
+    console.error('[uiUtils] Could not find item div for index:', index);
+    return;
+  }
   
   const editForm = itemDiv.querySelector('.item-edit-form');
   const quantityInput = editForm.querySelector('.edit-quantity');
   const unitInput = editForm.querySelector('.edit-unit');
   const nameInput = editForm.querySelector('.edit-name');
   
+  console.log('[uiUtils] Form values before save:');
+  console.log('[uiUtils] - Quantity:', quantityInput.value);
+  console.log('[uiUtils] - Unit:', unitInput.value);
+  console.log('[uiUtils] - Name:', nameInput.value);
+  console.log('[uiUtils] - Original item:', currentOrderItems[index]);
+  
   // Update the item
-  currentOrderItems[index] = {
+  const updatedItem = {
     ...currentOrderItems[index],
     quantity: parseFloat(quantityInput.value) ? parseFloat(quantityInput.value) : 1,
     unit: unitInput.value.trim(),
     name: nameInput.value.trim()
   };
   
+  currentOrderItems[index] = updatedItem;
+  console.log('[uiUtils] Updated item:', updatedItem);
+  
   // Re-render to show updated item
+  console.log('[uiUtils] Re-rendering order preview...');
   renderOrderPreview();
 }
 
