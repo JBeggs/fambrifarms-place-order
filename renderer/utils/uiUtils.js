@@ -141,10 +141,8 @@ function renderOrderPreview() {
     return;
   }
   
-  // Re-parse items from selected messages if needed
-  if (currentOrderItems.length === 0) {
-    parseOrderItemsFromMessages();
-  }
+  // Always re-parse items from selected messages to ensure we get all items
+  parseOrderItemsFromMessages();
   
   if (currentOrderItems.length === 0) {
     orderPreviewEl.innerHTML = '<div style="padding: 8px; color: #999;">No order items found in selected messages</div>';
@@ -509,43 +507,111 @@ function addNewOrderItem() {
 }
 
 function parseOrderItemsFromMessages() {
-  // This function would use dataUtils to parse the messages
-  // Implementation would be moved from main renderer
   console.log('Parsing order items from selected messages');
   currentOrderItems = [];
   
   // Extract items from selected messages
   const selectedMessages = Array.from(selectedMessageIds).map(id => rawMessages[id]).filter(Boolean);
-  const combinedText = selectedMessages.map(msg => {
-    if (!msg.text) {
-      console.error('[renderer] Selected message missing text for order preview:', msg);
-      throw new Error('Selected message missing required text');
+  
+  for (const message of selectedMessages) {
+    if (!message.text) {
+      console.error('[renderer] Selected message missing text for order preview:', message);
+      continue;
     }
-    return msg.text;
-  }).join('\n');
-  
-  // Basic parsing - would use dataUtils.parseAndStandardizeItem
-  const lines = combinedText.split('\n').filter(line => line.trim());
-  
-  for (const line of lines) {
-    const trimmedLine = line.trim();
     
-    // Skip obvious non-item lines
-    if (trimmedLine.length < 3) continue;
-    if (trimmedLine.toLowerCase().includes('good morning')) continue;
-    if (trimmedLine.toLowerCase().includes('thank you')) continue;
+    // Split message text into lines and process each line
+    const lines = message.text.split('\n').filter(line => line.trim());
     
-    // Simple item parsing - would be replaced with dataUtils function
-    const item = {
-      name: trimmedLine,
-      quantity: 1,
-      unit: '',
-      originalText: trimmedLine,
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Skip empty lines
+      if (trimmedLine.length === 0) continue;
+      
+      // Use basic order item detection
+      if (isBasicOrderItem(trimmedLine)) {
+        // Parse quantity and unit from the line
+        const parsed = parseItemLine(trimmedLine);
+        currentOrderItems.push(parsed);
+      }
+    }
+  }
+  
+  console.log('Parsed order items:', currentOrderItems.length);
+}
+
+// Basic order item detection (fallback when import fails)
+function isBasicOrderItem(text) {
+  if (!text || text.trim().length < 3) return false;
+  
+  const trimmed = text.trim().toLowerCase();
+  
+  // Skip common greetings and responses
+  const skipWords = ['hi', 'hello', 'hey', 'thanks', 'thank you', 'good morning', 'good afternoon', 'good evening', 'yes', 'no', 'ok', 'okay', 'sure', 'great', 'perfect'];
+  if (skipWords.includes(trimmed)) return false;
+  
+  // Skip if starts with common non-product phrases
+  const skipStarts = ['can you', 'could you', 'would you', 'when will', 'what time', 'how much', 'delivery to', 'address is'];
+  if (skipStarts.some(phrase => trimmed.startsWith(phrase))) return false;
+  
+  // Check for quantity patterns (numbers with units)
+  if (/\d+\s*(kg|g|pkt|pkts|box|boxes|bag|bags|bunch|bunches|head|heads|x|×|\*)/i.test(text)) return true;
+  
+  // Check for "please add" pattern
+  if (/^please\s+add\s+/i.test(trimmed)) return true;
+  
+  // Check for common product words
+  const productWords = ['tomato', 'onion', 'potato', 'carrot', 'lettuce', 'spinach', 'broccoli', 'mushroom', 'pepper', 'cucumber', 'cabbage', 'avocado', 'banana', 'apple', 'orange'];
+  if (productWords.some(product => trimmed.includes(product))) return true;
+  
+  // If it's a reasonable length and has letters, might be an item
+  if (trimmed.length >= 4 && trimmed.length <= 50 && /[a-zA-Z]/.test(trimmed)) return true;
+  
+  return false;
+}
+
+// Parse individual item line to extract quantity, unit, and name
+function parseItemLine(text) {
+  const trimmed = text.trim();
+  
+  // Handle "please add X" pattern
+  const pleaseAddMatch = trimmed.match(/^please\s+add\s+(.+)$/i);
+  if (pleaseAddMatch) {
+    return parseItemLine(pleaseAddMatch[1]); // Recursively parse the item part
+  }
+  
+  // Try to extract quantity and unit
+  const quantityMatch = trimmed.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|pkt|pkts|packet|packets|box|boxes|bag|bags|bunch|bunches|head|heads)?\s*(.*)$/i);
+  if (quantityMatch) {
+    return {
+      quantity: parseFloat(quantityMatch[1]) || 1,
+      unit: quantityMatch[2] || '',
+      name: quantityMatch[3].trim() || trimmed,
+      originalText: text,
       price: 0
     };
-    
-    currentOrderItems.push(item);
   }
+  
+  // Try multiplication pattern (e.g., "2x tomatoes")
+  const multiplyMatch = trimmed.match(/^(\d+)\s*[x×*]\s*(.+)$/i);
+  if (multiplyMatch) {
+    return {
+      quantity: parseInt(multiplyMatch[1]) || 1,
+      unit: 'x',
+      name: multiplyMatch[2].trim(),
+      originalText: text,
+      price: 0
+    };
+  }
+  
+  // Default: treat whole text as item name
+  return {
+    quantity: 1,
+    unit: '',
+    name: trimmed,
+    originalText: text,
+    price: 0
+  };
 }
 
 // Panel switching
