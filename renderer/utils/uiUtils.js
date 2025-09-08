@@ -23,18 +23,39 @@ function getDomElements() {
 }
 
 function renderMessagesList() {
+  console.log('[uiUtils] 🎯 renderMessagesList called');
+  console.log('[uiUtils] - domElements keys:', Object.keys(domElements));
+  console.log('[uiUtils] - domElements:', domElements);
+  
   const { messagesListEl } = domElements;
   if (!messagesListEl) {
-    console.warn('[uiUtils] Messages list element not found');
-    return;
+    console.error('[uiUtils] ❌ messagesListEl not found in domElements!');
+    console.error('[uiUtils] Available DOM elements:', Object.keys(domElements));
+    
+    // Try to find it directly from document as fallback
+    const fallbackEl = document.getElementById('messagesList');
+    console.log('[uiUtils] Fallback element found:', !!fallbackEl);
+    if (fallbackEl) {
+      console.log('[uiUtils] Using fallback element');
+      domElements.messagesListEl = fallbackEl;
+    } else {
+      return;
+    }
   }
   
-  console.log('[uiUtils] Rendering messages list, count:', rawMessages.length);
-  messagesListEl.innerHTML = '';
+  // Get the actual element (either from domElements or fallback)
+  const actualMessagesListEl = domElements.messagesListEl || messagesListEl;
+  
+  console.log('[uiUtils] 📋 Rendering messages list...');
+  console.log('[uiUtils] - rawMessages.length:', rawMessages.length);
+  console.log('[uiUtils] - actualMessagesListEl:', actualMessagesListEl);
+  console.log('[uiUtils] - Sample rawMessages:', rawMessages.slice(0, 3));
+  
+  actualMessagesListEl.innerHTML = '';
   
   if (rawMessages.length === 0) {
-    messagesListEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No messages available</div>';
-    console.log('[uiUtils] No messages to display');
+    console.log('[uiUtils] ⚠️ No messages to display - rawMessages array is empty!');
+    actualMessagesListEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No messages available</div>';
     return;
   }
   
@@ -75,7 +96,7 @@ function renderMessagesList() {
     messageDiv.appendChild(checkbox);
     messageDiv.appendChild(contentDiv);
     
-    messagesListEl.appendChild(messageDiv);
+    actualMessagesListEl.appendChild(messageDiv);
   });
 }
 
@@ -342,183 +363,6 @@ function renderOrderPreview() {
     itemDiv.appendChild(contentDiv);
     itemDiv.appendChild(actionsDiv);
     
-    // Edit form (hidden by default)
-    const editForm = document.createElement('div');
-    editForm.className = 'item-edit-form';
-    editForm.innerHTML = `
-      <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-        <div style="flex: 0 0 80px;">
-          <label style="display: block; font-size: 11px; margin-bottom: 2px;">Quantity</label>
-          <input type="number" step="0.1" value="${item.quantity}" placeholder="Qty" class="edit-quantity" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
-        </div>
-        <div style="flex: 0 0 100px;">
-          <label style="display: block; font-size: 11px; margin-bottom: 2px;">Unit</label>
-          <select class="edit-unit" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
-            ${generateUnitOptions(item.unit)}
-          </select>
-        </div>
-        <div style="flex: 1;">
-          <label style="display: block; font-size: 11px; margin-bottom: 2px;">Product</label>
-          <input type="text" value="${item.name}" placeholder="Product" class="edit-name" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
-        </div>
-      </div>
-      <div style="margin-bottom: 8px;">
-        <label style="display: block; font-size: 11px; margin-bottom: 2px;">Search & Select Existing Product</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" placeholder="Type to search products..." class="edit-product-search" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
-          <button class="btn-use-product" disabled style="padding: 6px 12px; border: none; background: #2196f3; color: white; border-radius: 3px; cursor: pointer; font-size: 11px;">Use Selected</button>
-        </div>
-        <div class="edit-search-results" style="max-height: 100px; overflow-y: auto; margin-top: 4px; display: none;"></div>
-      </div>
-      <div style="display: flex; gap: 8px; justify-content: flex-end;">
-        <button class="btn-cancel" style="padding: 6px 12px; border: 1px solid #ddd; background: white; border-radius: 3px; cursor: pointer; font-size: 11px;">Cancel</button>
-        <button class="btn-save" style="padding: 6px 12px; border: none; background: #4caf50; color: white; border-radius: 3px; cursor: pointer; font-size: 11px;">Save</button>
-      </div>
-    `;
-    
-    // Edit form event handlers
-    const saveBtn = editForm.querySelector('.btn-save');
-    const cancelBtn = editForm.querySelector('.btn-cancel');
-    const productSearchInput = editForm.querySelector('.edit-product-search');
-    const searchResultsDiv = editForm.querySelector('.edit-search-results');
-    const useProductBtn = editForm.querySelector('.btn-use-product');
-    const nameInput = editForm.querySelector('.edit-name');
-    const unitSelect = editForm.querySelector('.edit-unit');
-    
-    let selectedEditProduct = null;
-    
-    // Product search functionality for inline editor
-    const searchEditProducts = (query) => {
-      if (!query || query.length < 2) {
-        searchResultsDiv.style.display = 'none';
-        return;
-      }
-      
-      console.log('[uiUtils] Searching products for query:', query);
-      
-      // Get products from global window object
-      const products = window.products || [];
-      console.log('[uiUtils] Available products count:', products.length);
-      
-      if (products.length === 0) {
-        searchResultsDiv.innerHTML = '<div style="padding: 6px; color: #ff6b6b; font-style: italic; font-size: 11px;">Products not loaded yet. Please wait...</div>';
-        searchResultsDiv.style.display = 'block';
-        
-        // Try to reload products if they're not available
-        import('./dataLoaders.js').then(({ loadProducts }) => {
-          console.log('[uiUtils] Attempting to reload products...');
-          loadProducts().then(() => {
-            console.log('[uiUtils] Products reloaded, retrying search...');
-            // Retry the search after a short delay
-            setTimeout(() => searchEditProducts(query), 500);
-          }).catch(err => {
-            console.error('[uiUtils] Failed to reload products:', err);
-            searchResultsDiv.innerHTML = '<div style="padding: 6px; color: #ff6b6b; font-style: italic; font-size: 11px;">Failed to load products. Please refresh the app.</div>';
-          });
-        });
-        return;
-      }
-      
-      const matches = products.filter(p => 
-        p.name && p.name.toLowerCase().includes(query.toLowerCase()) ||
-        (p.common_names && p.common_names.some(name => name.toLowerCase().includes(query.toLowerCase())))
-      ).slice(0, 8); // Limit to 8 results for inline editor
-      
-      console.log('[uiUtils] Found product matches:', matches.length);
-      
-      if (matches.length === 0) {
-        searchResultsDiv.innerHTML = '<div style="padding: 6px; color: #666; font-style: italic; font-size: 11px;">No products found</div>';
-        searchResultsDiv.style.display = 'block';
-        return;
-      }
-      
-      searchResultsDiv.innerHTML = matches.map(product => {
-        const productDiv = document.createElement('div');
-        productDiv.className = 'edit-search-result';
-        productDiv.dataset.productId = product.id;
-        productDiv.style.cssText = `
-          padding: 6px; border: 1px solid #ddd; margin-bottom: 2px; border-radius: 3px; 
-          cursor: pointer; background: white; font-size: 11px;
-        `;
-        productDiv.innerHTML = `<strong>${product.name}</strong> - ${product.unit || 'N/A'} - R${product.price || '0.00'}`;
-        
-        // Add hover effects
-        productDiv.addEventListener('mouseenter', () => {
-          productDiv.style.background = '#f0f0f0';
-        });
-        productDiv.addEventListener('mouseleave', () => {
-          if (!productDiv.classList.contains('selected')) {
-            productDiv.style.background = 'white';
-          }
-        });
-        
-        return productDiv.outerHTML;
-      }).join('');
-      searchResultsDiv.style.display = 'block';
-      
-      // Add click handlers to search results
-      searchResultsDiv.querySelectorAll('.edit-search-result').forEach(resultEl => {
-        resultEl.addEventListener('click', () => {
-          const productId = parseInt(resultEl.dataset.productId);
-          selectedEditProduct = products.find(p => p.id === productId);
-          
-          console.log('[uiUtils] Selected product:', selectedEditProduct);
-          
-          // Highlight selected result
-          searchResultsDiv.querySelectorAll('.edit-search-result').forEach(el => {
-            el.style.background = 'white';
-            el.style.border = '1px solid #ddd';
-            el.classList.remove('selected');
-          });
-          resultEl.style.background = '#e3f2fd';
-          resultEl.style.border = '2px solid #2196f3';
-          resultEl.classList.add('selected');
-          
-          useProductBtn.disabled = false;
-          useProductBtn.style.background = '#2196f3';
-        });
-      });
-    };
-    
-    productSearchInput.addEventListener('input', (e) => {
-      searchEditProducts(e.target.value);
-    });
-    
-    useProductBtn.addEventListener('click', () => {
-      if (selectedEditProduct) {
-        console.log('[uiUtils] Using selected product:', selectedEditProduct);
-        console.log('[uiUtils] Product name:', selectedEditProduct.name);
-        console.log('[uiUtils] Product unit:', selectedEditProduct.unit);
-        console.log('[uiUtils] Current name input value:', nameInput.value);
-        console.log('[uiUtils] Current unit select value:', unitSelect.value);
-        
-        // Update form fields
-        nameInput.value = selectedEditProduct.name || '';
-        unitSelect.value = selectedEditProduct.unit || '';
-        
-        console.log('[uiUtils] Updated name input value:', nameInput.value);
-        console.log('[uiUtils] Updated unit select value:', unitSelect.value);
-        
-        // Hide search results
-        searchResultsDiv.style.display = 'none';
-        productSearchInput.value = '';
-        useProductBtn.disabled = true;
-        useProductBtn.style.background = '#ccc';
-        
-        // Auto-save the changes so user doesn't have to click Save
-        console.log('[uiUtils] Auto-saving product changes...');
-        saveOrderItemEdit(index);
-      } else {
-        console.warn('[uiUtils] No product selected when Use Product clicked');
-      }
-    });
-    
-    saveBtn.addEventListener('click', () => saveOrderItemEdit(index));
-    cancelBtn.addEventListener('click', () => cancelOrderItemEdit(index));
-    
-    editForm.style.display = 'none';
-    
-    itemDiv.appendChild(editForm);
     orderPreviewEl.appendChild(itemDiv);
   });
   
@@ -536,74 +380,24 @@ function renderOrderPreview() {
   orderPreviewEl.appendChild(addItemDiv);
 }
 
-function editOrderItem(index) {
-  const { orderPreviewEl } = domElements;
-  const itemDiv = orderPreviewEl.querySelector(`[data-item-index="${index}"]`);
-  if (!itemDiv) return;
+async function editOrderItem(index) {
+  const item = currentOrderItems[index];
+  if (!item) return;
   
-  const editForm = itemDiv.querySelector('.item-edit-form');
-  const content = itemDiv.querySelector('.preview-item-content');
-  const actions = itemDiv.querySelector('.preview-item-actions');
-  
-  // Show edit form, hide content and actions
-  editForm.style.display = 'block';
-  content.style.display = 'none';
-  actions.style.display = 'none';
-}
-
-function saveOrderItemEdit(index) {
-  console.log('[uiUtils] saveOrderItemEdit called for index:', index);
-  
-  const { orderPreviewEl } = domElements;
-  const itemDiv = orderPreviewEl.querySelector(`[data-item-index="${index}"]`);
-  if (!itemDiv) {
-    console.error('[uiUtils] Could not find item div for index:', index);
-    return;
+  try {
+    const updatedItem = await showEditOrderItemDialog(item, index);
+    if (updatedItem) {
+      currentOrderItems[index] = updatedItem;
+      itemsManuallyModified = true; // Mark items as manually modified
+      console.log('[uiUtils] Updated item:', updatedItem);
+      console.log('[uiUtils] Marked items as manually modified');
+      renderOrderPreview();
+    }
+  } catch (error) {
+    console.error('[uiUtils] Error editing item:', error);
   }
-  
-  const editForm = itemDiv.querySelector('.item-edit-form');
-  const quantityInput = editForm.querySelector('.edit-quantity');
-  const unitInput = editForm.querySelector('.edit-unit');
-  const nameInput = editForm.querySelector('.edit-name');
-  
-  console.log('[uiUtils] Form values before save:');
-  console.log('[uiUtils] - Quantity:', quantityInput.value);
-  console.log('[uiUtils] - Unit:', unitInput.value);
-  console.log('[uiUtils] - Name:', nameInput.value);
-  console.log('[uiUtils] - Original item:', currentOrderItems[index]);
-  
-  // Update the item
-  const updatedItem = {
-    ...currentOrderItems[index],
-    quantity: parseFloat(quantityInput.value) ? parseFloat(quantityInput.value) : 1,
-    unit: unitInput.value.trim(),
-    name: nameInput.value.trim()
-  };
-  
-  currentOrderItems[index] = updatedItem;
-  itemsManuallyModified = true; // Mark items as manually modified
-  console.log('[uiUtils] Updated item:', updatedItem);
-  console.log('[uiUtils] Marked items as manually modified');
-  
-  // Re-render to show updated item
-  console.log('[uiUtils] Re-rendering order preview...');
-  renderOrderPreview();
 }
 
-function cancelOrderItemEdit(index) {
-  const { orderPreviewEl } = domElements;
-  const itemDiv = orderPreviewEl.querySelector(`[data-item-index="${index}"]`);
-  if (!itemDiv) return;
-  
-  const editForm = itemDiv.querySelector('.item-edit-form');
-  const content = itemDiv.querySelector('.preview-item-content');
-  const actions = itemDiv.querySelector('.preview-item-actions');
-  
-  // Hide edit form, show content and actions
-  editForm.style.display = 'none';
-  content.style.display = 'block';
-  actions.style.display = 'flex';
-}
 
 function removeOrderItem(index) {
   console.log('[uiUtils] removeOrderItem called with index:', index);
@@ -847,7 +641,21 @@ function handleClose() {
 
 // State management
 function setRawMessages(messages) {
+  console.log('[uiUtils] 📥 setRawMessages called with:', messages.length, 'messages');
+  console.log('[uiUtils] Sample messages being set:', messages.slice(0, 3));
   rawMessages = messages;
+  console.log('[uiUtils] rawMessages updated, new length:', rawMessages.length);
+}
+
+// Debug function to test UI rendering
+function testRenderMessages() {
+  console.log('[uiUtils] 🧪 Testing message rendering with dummy data');
+  const testMessages = [
+    { id: 1, timestamp: '12:00', sender: 'Test User', text: 'Test message 1' },
+    { id: 2, timestamp: '12:01', sender: 'Test User 2', text: 'Test message 2' }
+  ];
+  setRawMessages(testMessages);
+  renderMessagesList();
 }
 
 function getRawMessages() {
@@ -1559,6 +1367,226 @@ async function showProcurementDialog(product, requiredQuantity, actionType) {
   });
 }
 
+async function showEditOrderItemDialog(item, index) {
+  return new Promise(async (resolve) => {
+    // Create modal dialog
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px;
+      max-height: 90vh; overflow-y: auto;
+    `;
+    
+    dialog.innerHTML = `
+      <h3>Edit Order Item</h3>
+      <form id="editItemForm">
+        <div style="margin-bottom: 15px;">
+          <label for="editQuantity">Quantity:</label>
+          <input type="number" id="editQuantity" value="${item.quantity}" step="0.1" min="0" required style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label for="editUnit">Unit:</label>
+          <select id="editUnit" style="width: 100%; padding: 8px; margin-top: 5px;">
+            <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg - Kilogram</option>
+            <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g - Gram</option>
+            <option value="pcs" ${item.unit === 'pcs' ? 'selected' : ''}>pcs - Pieces</option>
+            <option value="box" ${item.unit === 'box' ? 'selected' : ''}>box - Box</option>
+            <option value="bag" ${item.unit === 'bag' ? 'selected' : ''}>bag - Bag</option>
+            <option value="pack" ${item.unit === 'pack' ? 'selected' : ''}>pack - Pack</option>
+            <option value="bunch" ${item.unit === 'bunch' ? 'selected' : ''}>bunch - Bunch</option>
+            <option value="tray" ${item.unit === 'tray' ? 'selected' : ''}>tray - Tray</option>
+            <option value="punnet" ${item.unit === 'punnet' ? 'selected' : ''}>punnet - Punnet</option>
+            <option value="l" ${item.unit === 'l' ? 'selected' : ''}>l - Liter</option>
+            <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml - Milliliter</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label for="editProductName">Product Name:</label>
+          <input type="text" id="editProductName" value="${item.name}" required style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label>Search & Select Existing Product:</label>
+          <input type="text" id="productSearch" placeholder="Type to search products..." style="width: 100%; padding: 8px; margin-top: 5px;">
+          <div id="searchResults" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; margin-top: 5px; display: none;"></div>
+          <button type="button" id="useSelectedBtn" style="margin-top: 5px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; display: none;">Use Selected Product</button>
+        </div>
+        
+        <div id="errorMessage" style="color: red; margin-bottom: 15px; display: none;"></div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" id="cancelBtn" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px;">Cancel</button>
+          <button type="submit" id="saveBtn" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px;">Save Changes</button>
+        </div>
+      </form>
+    `;
+    
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+    
+    // Focus on quantity input
+    setTimeout(() => dialog.querySelector('#editQuantity').focus(), 100);
+    
+    // Get form elements
+    const form = dialog.querySelector('#editItemForm');
+    const cancelBtn = dialog.querySelector('#cancelBtn');
+    const errorDiv = dialog.querySelector('#errorMessage');
+    const productSearchInput = dialog.querySelector('#productSearch');
+    const searchResultsDiv = dialog.querySelector('#searchResults');
+    const useSelectedBtn = dialog.querySelector('#useSelectedBtn');
+    
+    let selectedProduct = null;
+    
+    // Clean up function
+    function cleanup() {
+      document.body.removeChild(modal);
+    }
+    
+    // Product search functionality
+    let searchTimeout;
+    productSearchInput.addEventListener('input', async (e) => {
+      const query = e.target.value.trim();
+      
+      clearTimeout(searchTimeout);
+      
+      if (query.length < 2) {
+        searchResultsDiv.style.display = 'none';
+        useSelectedBtn.style.display = 'none';
+        selectedProduct = null;
+        return;
+      }
+      
+      searchTimeout = setTimeout(async () => {
+        try {
+          // Get products from global window object (loaded by dataLoaders.js)
+          const products = window.products || [];
+          
+          if (products.length === 0) {
+            // Try to load products if not available
+            const { loadProducts } = await import('./dataLoaders.js');
+            await loadProducts();
+            // Get products again after loading
+            const loadedProducts = window.products || [];
+            
+            if (loadedProducts.length === 0) {
+              searchResultsDiv.innerHTML = '<div style="padding: 8px; color: #666;">No products available</div>';
+              searchResultsDiv.style.display = 'block';
+              return;
+            }
+          }
+          
+          // Filter products based on query
+          const filteredProducts = products.filter(product => 
+            product.name && product.name.toLowerCase().includes(query.toLowerCase()) ||
+            (product.common_names && product.common_names.some(name => name.toLowerCase().includes(query.toLowerCase())))
+          ).slice(0, 10); // Limit to 10 results
+          
+          if (filteredProducts && filteredProducts.length > 0) {
+            searchResultsDiv.innerHTML = filteredProducts.map(product => `
+              <div class="product-result" data-product-id="${product.id}" style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee;">
+                <strong>${product.name}</strong> (${product.unit})
+                <br><small>Dept: ${product.department_name || 'N/A'}</small>
+              </div>
+            `).join('');
+            
+            searchResultsDiv.style.display = 'block';
+            
+            // Add click handlers for product results
+            searchResultsDiv.querySelectorAll('.product-result').forEach(div => {
+              div.addEventListener('click', () => {
+                // Remove previous selection
+                searchResultsDiv.querySelectorAll('.product-result').forEach(d => d.style.background = '');
+                // Highlight selected
+                div.style.background = '#e3f2fd';
+                
+                const productId = div.getAttribute('data-product-id');
+                selectedProduct = filteredProducts.find(p => p.id == productId);
+                useSelectedBtn.style.display = 'inline-block';
+              });
+            });
+          } else {
+            searchResultsDiv.innerHTML = '<div style="padding: 8px; color: #666;">No products found</div>';
+            searchResultsDiv.style.display = 'block';
+            useSelectedBtn.style.display = 'none';
+            selectedProduct = null;
+          }
+        } catch (error) {
+          console.error('Error searching products:', error);
+          searchResultsDiv.innerHTML = '<div style="padding: 8px; color: red;">Error searching products</div>';
+          searchResultsDiv.style.display = 'block';
+        }
+      }, 300);
+    });
+    
+    // Use selected product button
+    useSelectedBtn.addEventListener('click', () => {
+      if (selectedProduct) {
+        dialog.querySelector('#editProductName').value = selectedProduct.name;
+        dialog.querySelector('#editUnit').value = selectedProduct.unit;
+        
+        // Hide search results
+        searchResultsDiv.style.display = 'none';
+        useSelectedBtn.style.display = 'none';
+        productSearchInput.value = '';
+      }
+    });
+    
+    // Cancel button
+    cancelBtn.addEventListener('click', () => {
+      cleanup();
+      resolve(null);
+    });
+    
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        cleanup();
+        resolve(null);
+      }
+    });
+    
+    // Form submission
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const quantity = parseFloat(dialog.querySelector('#editQuantity').value);
+      const unit = dialog.querySelector('#editUnit').value;
+      const name = dialog.querySelector('#editProductName').value.trim();
+      
+      if (!quantity || quantity <= 0) {
+        errorDiv.textContent = 'Please enter a valid quantity greater than 0';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      if (!name) {
+        errorDiv.textContent = 'Please enter a product name';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      // Create updated item
+      const updatedItem = {
+        ...item,
+        quantity: quantity,
+        unit: unit,
+        name: name
+      };
+      
+      cleanup();
+      resolve(updatedItem);
+    });
+  });
+}
+
 async function showNewCustomerDialog() {
   return new Promise((resolve) => {
     // Create modal dialog
@@ -1732,6 +1760,9 @@ async function showNewCustomerDialog() {
 
 // Functions are now used with proper event listeners, no need for global exposure
 
+// Make test function available globally for debugging
+window.testRenderMessages = testRenderMessages;
+
 export {
   setDomElements,
   getDomElements,
@@ -1740,8 +1771,6 @@ export {
   renderSelectedMessages,
   renderOrderPreview,
   editOrderItem,
-  saveOrderItemEdit,
-  cancelOrderItemEdit,
   removeOrderItem,
   addNewOrderItem,
   parseOrderItemsFromMessages,
@@ -1759,5 +1788,7 @@ export {
   showInventoryDialog,
   showAddStockDialog,
   showProcurementDialog,
-  showNewCustomerDialog
+  showEditOrderItemDialog,
+  showNewCustomerDialog,
+  testRenderMessages
 };

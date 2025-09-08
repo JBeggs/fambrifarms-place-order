@@ -35,20 +35,49 @@ function loadPayload() {
 }
 
 function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 720,
-    minWidth: 900,
-    minHeight: 520,
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
-  });
-  console.log('[main] BrowserWindow created');
+  console.log('[main] ========== CREATING MAIN WINDOW ==========');
+  console.log('[main] __dirname:', __dirname);
+  console.log('[main] preload path:', path.join(__dirname, 'preload.js'));
+  
+  try {
+    mainWindow = new BrowserWindow({
+      width: 1100,
+      height: 720,
+      minWidth: 900,
+      minHeight: 520,
+      show: false,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js')
+      }
+    });
+    console.log('[main] ✅ BrowserWindow created successfully');
+  } catch (error) {
+    console.error('[main] ❌ Failed to create BrowserWindow:', error);
+    throw error;
+  }
   
   mainWindow.webContents.on('did-start-loading', () => {
-    console.log('[main] webContents did-start-loading');
+    console.log('[main] 🔄 webContents did-start-loading');
+  });
+  
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[main] ✅ webContents did-finish-load');
+  });
+  
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('[main] ❌ webContents did-fail-load:', errorCode, errorDescription);
+  });
+  
+  mainWindow.webContents.on('crashed', () => {
+    console.error('[main] ❌ webContents crashed');
+  });
+  
+  mainWindow.webContents.on('unresponsive', () => {
+    console.error('[main] ⚠️ webContents unresponsive');
+  });
+  
+  mainWindow.webContents.on('responsive', () => {
+    console.log('[main] ✅ webContents responsive again');
   });
   
   mainWindow.webContents.on('dom-ready', () => {
@@ -89,7 +118,11 @@ function createWindow() {
 
 // Register protocol before app is ready
 app.whenReady().then(async () => {
-  console.log('[main] app ready');
+  console.log('[main] ========== APP READY ==========');
+  console.log('[main] Electron version:', process.versions.electron);
+  console.log('[main] Node version:', process.versions.node);
+  console.log('[main] Platform:', process.platform);
+  console.log('[main] Working directory:', process.cwd());
   
   // Register protocol to serve images
   protocol.registerFileProtocol('local-images', (request, callback) => {
@@ -122,9 +155,23 @@ app.whenReady().then(async () => {
     callback({ path: imagePath });
   });
   
+  console.log('[main] 🔧 Setting up app...');
   const payload = loadPayload();
+  console.log('[main] Payload loaded:', payload ? 'Yes' : 'No');
+  
   app.setAppUserModelId('com.fambri.placeorder');
+  console.log('[main] App user model ID set');
+  
+  console.log('[main] 🪟 Creating window...');
   createWindow();
+  
+  // Auto-open DevTools for debugging
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      console.log('[main] 🔧 Opening DevTools for debugging...');
+      mainWindow.webContents.openDevTools();
+    }
+  }, 2000);
   // Sync alias reader for preload (no fs in preload sandbox)
   ipcMain.on('read-aliases-sync', (event) => {
     try {
@@ -232,9 +279,28 @@ app.whenReady().then(async () => {
     }, 140);
   }
 
+  // Handle renderer requests for fresh messages
+  ipcMain.handle('request-fresh-messages', async () => {
+    console.log('[main] 📥 Renderer requesting fresh messages...');
+    if (reader && reader.sendFreshData) {
+      try {
+        await reader.sendFreshData();
+        console.log('[main] ✅ Fresh messages sent to renderer');
+        return { success: true };
+      } catch (error) {
+        console.error('[main] ❌ Failed to send fresh messages:', error.message);
+        return { success: false, error: error.message };
+      }
+    } else {
+      console.log('[main] ⚠️ WhatsApp reader not available for fresh data request');
+      return { success: false, error: 'Reader not available' };
+    }
+  });
+
   // Re-enable WhatsApp reader with session conflict fix
   try {
-    console.log('[main] starting reader');
+    console.log('[main] 🤖 Starting WhatsApp reader...');
+    console.log('[main] Environment variables available:', Object.keys(process.env).filter(k => k.includes('WHATSAPP') || k.includes('CHROME')));
     reader = await startReader(process.env, (batch) => {
       if (!batch) return;
       

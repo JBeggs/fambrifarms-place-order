@@ -7,8 +7,17 @@ import https from 'https';
 import http from 'http';
 
 export async function startReader(env, onBatch) {
+  console.log('[reader] ========== STARTING WHATSAPP READER ==========');
+  console.log('[reader] Environment check...');
+  
   const required = ['TARGET_GROUP_NAME', 'WHATSAPP_SESSION_PATH', 'SLEEP_DELAY', 'LOAD_TIMEOUT', 'LOGIN_TIMEOUT', 'MONITOR_INTERVAL'];
-  for (const k of required) if (!env[k]) throw new Error(`${k} not set`);
+  for (const k of required) {
+    if (!env[k]) {
+      console.error(`[reader] ❌ Missing required environment variable: ${k}`);
+      throw new Error(`${k} not set`);
+    }
+    console.log(`[reader] ✅ ${k}: ${k.includes('PATH') ? '***' : env[k]}`);
+  }
 
   const targetGroupName = env.TARGET_GROUP_NAME;
   const sessionPath = env.WHATSAPP_SESSION_PATH;
@@ -17,6 +26,12 @@ export async function startReader(env, onBatch) {
   const loginTimeout = parseInt(env.LOGIN_TIMEOUT);
   const monitorInterval = parseInt(env.MONITOR_INTERVAL);
   const headless = env.HEADLESS === '1';
+  
+  console.log('[reader] Configuration:');
+  console.log('[reader] - Target Group:', targetGroupName);
+  console.log('[reader] - Session Path:', sessionPath);
+  console.log('[reader] - Headless Mode:', headless);
+  console.log('[reader] - Monitor Interval:', monitorInterval, 'ms');
 
   const dataDir = path.resolve(process.cwd(), 'place-order', 'data');
   const currentDir = path.dirname(new URL(import.meta.url).pathname);
@@ -150,16 +165,24 @@ export async function startReader(env, onBatch) {
   }
 
   async function openGroup() {
-    console.log('[reader] navigating to web.whatsapp.com');
+    console.log('[reader] 🌐 Navigating to web.whatsapp.com');
     await driver.get('https://web.whatsapp.com');
     await driver.sleep(sleepDelay);
+    
+    console.log('[reader] ⏳ Waiting for WhatsApp to load...');
     await driver.wait(until.elementLocated(By.css('span[title], [data-testid="qr-code"]')), loadTimeout);
+    
     const qr = await driver.findElements(By.css('[data-testid="qr-code"]'));
     if (qr.length) { 
-      console.log('[reader] qr present, waiting for login'); 
+      console.log('[reader] 📱 QR code present, waiting for login...'); 
       await driver.wait(until.elementLocated(By.css('span[title]')), loginTimeout); 
+      console.log('[reader] ✅ Login successful');
+    } else {
+      console.log('[reader] ✅ Already logged in');
     }
+    
     const want = targetGroupName.trim().toLowerCase();
+    console.log('[reader] 🔍 Looking for target group:', want);
 
     async function clickChatByTitle(title) {
       for (let i = 0; i < 3; i++) {
@@ -182,7 +205,10 @@ export async function startReader(env, onBatch) {
     }
 
     // Try to match from visible list using fresh lookups (avoid stale references)
+    console.log('[reader] 📋 Scanning available chats...');
     const chats = await driver.findElements(By.css('span[title]'));
+    console.log('[reader] Found', chats.length, 'chat elements');
+    
     const titles = [];
     for (const chat of chats) {
       try { 
@@ -193,22 +219,28 @@ export async function startReader(env, onBatch) {
         console.warn('[reader] Failed to get chat title:', error.message);
       }
     }
+    
+    console.log('[reader] Available chat titles:', titles.slice(0, 10));
+    console.log('[reader] Looking for group matching:', want);
+    
     for (const title of titles) {
       const t = title.toLowerCase();
       if (t === want) {
-        console.log('[reader] opening exact matched chat', { title });
+        console.log('[reader] ✅ Found exact match:', title);
         const ok = await clickChatByTitle(title);
         if (ok) return;
       } else if (t.includes(want)) {
-        console.log('[reader] opening chat containing wanted text', { title });
+        console.log('[reader] ✅ Found partial match (contains target):', title);
         const ok = await clickChatByTitle(title);
         if (ok) return;
       } else if (want.includes(t)) {
-        console.log('[reader] opening matched chat', { title });
+        console.log('[reader] ✅ Found partial match (target contains):', title);
         const ok = await clickChatByTitle(title);
         if (ok) return;
       }
     }
+    
+    console.log('[reader] ❌ No matching group found in', titles.length, 'chats');
 
     // Search alternative method
     console.log('[reader] Using search alternative method');
@@ -276,7 +308,10 @@ export async function startReader(env, onBatch) {
     const items = [];
     
     // Collect text messages
+    console.log('[reader] 🔍 Looking for text messages...');
     const textNodes = await driver.findElements(By.css('.copyable-text[data-pre-plain-text]'));
+    console.log('[reader] Found', textNodes.length, 'text message elements');
+    
     for (const el of textNodes) {
       try {
         const pre = await el.getAttribute('data-pre-plain-text');
@@ -420,7 +455,10 @@ export async function startReader(env, onBatch) {
     const gm = await getGroupMembers();
     const lines = formatLines(unread, gm);
     const payload = { handoff_version: '1.0', items_text: lines, source: 'whatsapp', group: targetGroupName };
-    console.log('[reader] emitting batch', { count: lines.length });
+    console.log('[reader] 📤 Emitting batch to renderer:', { count: lines.length, hasCallback: !!onBatch });
+    if (lines.length > 0) {
+      console.log('[reader] Sample messages:', lines.slice(0, 3).map(l => l.substring(0, 50) + '...'));
+    }
     onBatch(payload);
     const newLastProcessedMs = lastProcessedMs ? lastProcessedMs : 0;
     lastProcessedMs = Math.max(newLastProcessedMs, ...unread.map(u => u.tsMs));
@@ -441,6 +479,16 @@ export async function startReader(env, onBatch) {
 
   return { 
     driver: driver,  // Expose the driver for sharing with sender
+    sendFreshData: async () => {
+      console.log('[reader] 🔄 Sending fresh data to renderer...');
+      try {
+        await packageAndEmit(true); // Force send all messages as if initial load
+        console.log('[reader] ✅ Fresh data sent successfully');
+      } catch (error) {
+        console.error('[reader] ❌ Failed to send fresh data:', error.message);
+        throw error;
+      }
+    },
     stop: async () => { 
       try { 
         clearInterval(timer); 

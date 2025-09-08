@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
-console.log('[preload] loaded');
+console.log('[preload] ========== PRELOAD SCRIPT LOADED ==========');
+console.log('[preload] Node version:', process.versions.node);
+console.log('[preload] Electron version:', process.versions.electron);
+console.log('[preload] Platform:', process.platform);
 
 function getPayload() {
   try { 
@@ -77,6 +80,12 @@ function getValidationConfig() {
   }
 }
 
+console.log('[preload] 🌉 Exposing API to main world...');
+console.log('[preload] Environment variables available:');
+console.log('[preload] - BACKEND_API_URL:', !!process.env.BACKEND_API_URL);
+console.log('[preload] - PAYLOAD_JSON:', !!process.env.PAYLOAD_JSON);
+console.log('[preload] - FORWARDER_NAMES:', !!process.env.FORWARDER_NAMES);
+
 contextBridge.exposeInMainWorld('api', {
   onPayload: (cb) => ipcRenderer.on('payload', (_e, d) => cb(d)),
   onPayloadDebug: (cb) => ipcRenderer.on('payload_debug', (_e, d) => cb(d)),
@@ -100,5 +109,10 @@ contextBridge.exposeInMainWorld('api', {
   // WhatsApp sender methods
   whatsappSenderInit: () => ipcRenderer.invoke('whatsapp-sender-init'),
   whatsappSendMessage: (data) => ipcRenderer.invoke('whatsapp-send-message', data),
-  whatsappSenderStatus: () => ipcRenderer.invoke('whatsapp-sender-status')
+  whatsappSenderStatus: () => ipcRenderer.invoke('whatsapp-sender-status'),
+  // WhatsApp reader methods
+  requestFreshMessages: () => ipcRenderer.invoke('request-fresh-messages')
 });
+
+console.log('[preload] ✅ API successfully exposed to main world');
+console.log('[preload] ========== PRELOAD SCRIPT COMPLETE ==========');

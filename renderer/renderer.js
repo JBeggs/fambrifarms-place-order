@@ -35,21 +35,33 @@ let ordersListEl, statusFilterEl, dateFilterEl, customerFilterEl, btnRefreshOrde
 let appInitialized = false;
 
 // Initialize DOM elements and event listeners
-function initializeApp() {
+async function initializeApp() {
   if (appInitialized) {
     console.log('[renderer] App already initialized, skipping...');
     return;
   }
   
-  console.log('[renderer] Initializing app...');
+  console.log('[renderer] ========== INITIALIZING APP ==========');
+  console.log('[renderer] Document ready state:', document.readyState);
+  console.log('[renderer] Window location:', window.location.href);
+  console.log('[renderer] User agent:', navigator.userAgent);
   
   // Initialize DOM elements with null checks
+  console.log('[renderer] 🔍 Finding DOM elements...');
   messagesListEl = document.getElementById('messagesList');
   selectedMessagesListEl = document.getElementById('selectedMessagesList');
   orderPreviewEl = document.getElementById('orderPreview');
   customerSelectEl = document.getElementById('customerSelect');
   verifiedEl = document.getElementById('verified');
   hintEl = document.getElementById('hint');
+  
+  console.log('[renderer] DOM elements found:');
+  console.log('[renderer] - messagesList:', !!messagesListEl);
+  console.log('[renderer] - selectedMessagesList:', !!selectedMessagesListEl);
+  console.log('[renderer] - orderPreview:', !!orderPreviewEl);
+  console.log('[renderer] - customerSelect:', !!customerSelectEl);
+  console.log('[renderer] - verified:', !!verifiedEl);
+  console.log('[renderer] - hint:', !!hintEl);
   panelMessages = document.getElementById('panelMessages');
   panelOrders = document.getElementById('panelOrders');
   panelDebug = document.getElementById('panelDebug');
@@ -58,6 +70,14 @@ function initializeApp() {
   tabDebug = document.getElementById('tabDebug');
   debugPreEl = document.getElementById('debugPre');
   debugPostEl = document.getElementById('debugPost');
+  
+  console.log('[renderer] Panel elements found:');
+  console.log('[renderer] - panelMessages:', !!panelMessages);
+  console.log('[renderer] - panelOrders:', !!panelOrders);
+  console.log('[renderer] - panelDebug:', !!panelDebug);
+  console.log('[renderer] - tabMessages:', !!tabMessages);
+  console.log('[renderer] - tabOrders:', !!tabOrders);
+  console.log('[renderer] - tabDebug:', !!tabDebug);
 
   // Order management elements
   ordersListEl = document.getElementById('ordersList');
@@ -109,20 +129,42 @@ function initializeApp() {
 
   // Initialize the app state
   try {
+    console.log('[renderer] 📊 Loading configurations...');
     // Load configurations first
     loadConfigurations();
+    console.log('[renderer] ✅ Configurations loaded');
     
+    console.log('[renderer] 🔄 Loading backend data...');
+    console.log('[renderer] Backend endpoints configured:', !!ENDPOINTS.BACKEND_URL);
     // Load all data
     loadAllData();
+    console.log('[renderer] ✅ Data loading initiated');
     
+    console.log('[renderer] 🎨 Setting default panel...');
     // Set default panel
     showPanel('messages');
+    console.log('[renderer] ✅ Default panel set');
     
     // Mark as initialized
     appInitialized = true;
-    console.log('[renderer] App initialized successfully');
+    console.log('[renderer] ✅ ========== APP INITIALIZATION COMPLETE ==========');
+    
+    // Request fresh messages from WhatsApp reader
+    console.log('[renderer] 📥 Requesting fresh messages from reader...');
+    try {
+      const result = await window.api.requestFreshMessages();
+      if (result.success) {
+        console.log('[renderer] ✅ Fresh messages requested successfully');
+      } else {
+        console.warn('[renderer] ⚠️ Failed to request fresh messages:', result.error);
+      }
+    } catch (error) {
+      console.error('[renderer] ❌ Error requesting fresh messages:', error.message);
+    }
   } catch (error) {
-    console.error('[renderer] Error during app initialization:', error);
+    console.error('[renderer] ❌ ========== APP INITIALIZATION FAILED ==========');
+    console.error('[renderer] Error details:', error);
+    console.error('[renderer] Error stack:', error.stack);
     showApiError(`Initialization failed: ${error.message}`);
   }
 }
@@ -276,17 +318,43 @@ function boot() {
   console.log('[renderer] Booting application...');
   
   // Initialize the app when DOM is ready
+  console.log('[renderer] 🚀 Starting app initialization...');
+  console.log('[renderer] Document ready state:', document.readyState);
+  
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    console.log('[renderer] Document still loading, waiting for DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[renderer] DOMContentLoaded event fired');
+      initializeApp().catch(error => {
+        console.error('[renderer] Failed to initialize app:', error);
+      });
+    });
   } else {
-    initializeApp();
+    console.log('[renderer] Document already ready, initializing immediately...');
+    initializeApp().catch(error => {
+      console.error('[renderer] Failed to initialize app:', error);
+    });
   }
 }
 
 // Handle payload from main process
 if (window.api && typeof window.api.onPayload === 'function') {
+  console.log('[renderer] 📡 Setting up payload listener...');
   window.api.onPayload((payload) => {
     try { 
+      console.log('[renderer] 📥 RECEIVED PAYLOAD FROM READER:', {
+        source: payload.source,
+        group: payload.group,
+        messageCount: payload.items_text ? payload.items_text.length : 0,
+        version: payload.handoff_version
+      });
+      
+      if (payload.items_text && payload.items_text.length > 0) {
+        console.log('[renderer] Sample messages received:', payload.items_text.slice(0, 3));
+      } else {
+        console.log('[renderer] ⚠️ No messages in payload!');
+      }
+      
       console.log('[post-receive payload]', payload); 
       console.log('[post-receive payload json]', JSON.stringify(payload)); 
     } catch (error) {
@@ -425,8 +493,10 @@ if (window.api && typeof window.api.onPayload === 'function') {
       });
       
       // Update the utils state with the sorted messages
+      console.log('[renderer] 📤 About to call setRawMessages with', rawMessages.length, 'messages');
       setRawMessages(rawMessages);
       
+      console.log('[renderer] 🎨 About to call renderMessagesList');
       renderMessagesList();
     }
   });
@@ -457,9 +527,26 @@ boot();
 
 // Handle page refresh gracefully
 window.addEventListener('beforeunload', (event) => {
-  console.log('[renderer] Page is about to refresh/unload');
+  console.log('[renderer] ⚠️ Page is about to refresh/unload');
+  console.log('[renderer] App initialized:', appInitialized);
 });
 
 window.addEventListener('load', () => {
-  console.log('[renderer] Page loaded/refreshed');
+  console.log('[renderer] 🔄 Page loaded/refreshed');
+  console.log('[renderer] Current time:', new Date().toISOString());
+});
+
+// Add error handling for unhandled errors
+window.addEventListener('error', (event) => {
+  console.error('[renderer] ❌ Unhandled error:', event.error);
+  console.error('[renderer] Error message:', event.message);
+  console.error('[renderer] Error filename:', event.filename);
+  console.error('[renderer] Error line:', event.lineno);
+  console.error('[renderer] Error column:', event.colno);
+});
+
+// Add error handling for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[renderer] ❌ Unhandled promise rejection:', event.reason);
+  console.error('[renderer] Promise:', event.promise);
 });
